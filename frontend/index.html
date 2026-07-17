@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>เงินทอง — จดรายรับรายจ่าย</title>
+<meta name="description" content="แอปจดรายรับ-รายจ่ายส่วนตัว รายจ่ายประจำ บัตรเครดิต และลูกหนี้" />
+<meta name="theme-color" content="#171a21" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="เงินทอง" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <h1>เงินทอง 💰</h1>
+    <p class="subtitle">ระบบจดรายรับ-รายจ่ายส่วนตัว</p>
+    <form id="loginForm">
+      <div class="field">
+        <label for="loginUsername">ชื่อผู้ใช้</label>
+        <input id="loginUsername" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label for="loginPassword">รหัสผ่าน</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required />
+      </div>
+      <div class="form-error" id="loginError"></div>
+      <button type="submit" class="primary">เข้าสู่ระบบ</button>
+    </form>
+    <p class="login-hint">บัญชีทดลอง: demo / demo1234</p>
+  </div>
+</div>
+
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand">เงินทอง 💰</div>
+    <nav id="sideNav">
+      <button data-page="dashboard" class="active">
+        <span class="nav-icon">📊</span><span class="nav-label">ภาพรวม</span>
+      </button>
+      <button data-page="transactions">
+        <span class="nav-icon">📝</span><span class="nav-label">รายรับ-รายจ่าย</span>
+      </button>
+      <button data-page="recurring">
+        <span class="nav-icon">🔁</span><span class="nav-label">รายจ่ายประจำ</span>
+      </button>
+      <button data-page="creditCards">
+        <span class="nav-icon">💳</span><span class="nav-label">บัตรเครดิต</span>
+      </button>
+      <button data-page="loans">
+        <span class="nav-icon">🤝</span><span class="nav-label">ยืมเงิน/ลูกหนี้</span>
+      </button>
+      <button data-page="budgets">
+        <span class="nav-icon">🎯</span><span class="nav-label">งบประมาณ</span>
+      </button>
+    </nav>
+    <div class="user-box">
+      <div id="currentUserLabel">—</div>
+      <button id="notifyToggleBtn" class="small icon-btn" title="เปิดการแจ้งเตือน">🔔<span class="btn-label"> แจ้งเตือน</span></button>
+      <button id="pinLockBtn" class="small icon-btn" title="ตั้งรหัส PIN">🔒<span class="btn-label"> ตั้งรหัส PIN</span></button>
+      <button id="themeToggleBtn" class="theme-toggle small icon-btn" title="สลับธีม">🌙<span class="btn-label"> / ☀️ ธีม</span></button>
+      <button id="logoutBtn" class="small icon-btn" title="ออกจากระบบ">🚪<span class="btn-label"> ออกจากระบบ</span></button>
+    </div>
+  </aside>
+
+  <main class="main"><div id="pageContent"></div></main>
+</div>
+
+<div id="lockScreen" style="display:none">
+  <div class="login-card">
+    <h1>🔒 ล็อกอยู่</h1>
+    <p class="subtitle">ใส่รหัส PIN เพื่อเข้าใช้งาน</p>
+    <form id="pinUnlockForm">
+      <div class="field">
+        <label for="pinUnlockInput">รหัส PIN</label>
+        <input id="pinUnlockInput" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" required />
+      </div>
+      <div class="form-error" id="pinUnlockError"></div>
+      <button type="submit" class="primary">ปลดล็อก</button>
+    </form>
+  </div>
+</div>
+
+<div id="toastHost"></div>
+<div id="modalHost"></div>
+
+<script src="api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

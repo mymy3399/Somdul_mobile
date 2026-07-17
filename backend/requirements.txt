@@ -1,0 +1,10 @@
+fastapi==0.139.2
+uvicorn[standard]==0.51.0
+sqlalchemy==2.0.51
+aiosqlite==0.22.1
+pydantic-settings==2.14.2
+pyjwt==2.13.0
+bcrypt==5.0.0
+python-multipart==0.0.32
+pywebpush==2.3.0
+apscheduler==3.11.3

@@ -1,0 +1,16 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - dbdata:/app/data
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:////app/data/expense.db
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
+      CORS_ORIGINS: "*"
+
+volumes:
+  dbdata:
