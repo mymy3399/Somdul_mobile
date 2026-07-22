@@ -128,6 +128,13 @@ function renderOverviewChart(totalCash, totalDebts, totalCreditCards, totalRecur
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            // Debounce Chart.js's own ResizeObserver-driven redraws — without
+            // this, any tiny, transient size change in the canvas's
+            // container (e.g. a scrollbar appearing/disappearing as list
+            // content changes height) triggers an immediate redraw, which
+            // reads as the chart twitching independently of our own
+            // update('none') calls above.
+            resizeDelay: 100,
             plugins: {
                 legend: {
                     position: 'bottom',
@@ -323,6 +330,13 @@ async function renderMonthlyTrendChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            // Debounce Chart.js's own ResizeObserver-driven redraws — without
+            // this, any tiny, transient size change in the canvas's
+            // container (e.g. a scrollbar appearing/disappearing as list
+            // content changes height) triggers an immediate redraw, which
+            // reads as the chart twitching independently of our own
+            // update('none') calls above.
+            resizeDelay: 100,
             scales: {
                 x: { grid: { display: false }, ticks: { font: { size: 9 } } },
                 y: { ticks: { font: { size: 9 } }, beginAtZero: true }

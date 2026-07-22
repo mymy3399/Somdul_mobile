@@ -27,6 +27,33 @@
         })();
     </script>
 
+    <!-- Critical CSS, inlined and placed before any network-loaded resource
+         (Tailwind CDN, Google Fonts, Font Awesome all block on the network
+         and only generate/apply their styles once loaded — until then the
+         page has no styling at all). #loginScreen's rules here exactly
+         mirror its Tailwind classes, so whichever renders first — this
+         plain CSS or Tailwind's generated version — looks identical and
+         there's no visible jump between them. Without this, the very first
+         thing painted (the login screen, or the app shell for a split
+         second before it) could appear unstyled/top-left-aligned and then
+         "snap" into place once Tailwind finishes, which read as jank. -->
+    <style>
+        body { margin: 0; background-color: #f8fafc; }
+        #loginScreen {
+            position: fixed;
+            inset: 0;
+            background-color: #f8fafc;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        header { position: sticky; top: 0; z-index: 40; background-color: rgba(255, 255, 255, 0.9); }
+        nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; background-color: rgba(255, 255, 255, 0.95); }
+    </style>
+
     <!-- Tailwind CSS CDN (Play CDN — intentionally unpinned/no SRI: it's a
          JIT compiler script the Tailwind team updates in place, so pinning
          a content hash here would break styling on their next release) -->
