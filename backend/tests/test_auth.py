@@ -33,19 +33,6 @@ def test_login_rejects_wrong_password(client):
     assert res.status_code == 400
 
 
-def test_reset_requires_authentication(client):
-    # Regression test: /api/auth/reset used to be callable by anyone,
-    # anonymously, and would wipe/reseed the demo account.
-    res = client.post("/api/auth/reset")
-    assert res.status_code == 401
-
-
-def test_reset_works_when_authenticated(client, auth_headers):
-    headers = auth_headers(email="dave@example.com")
-    res = client.post("/api/auth/reset", headers=headers)
-    assert res.status_code == 200
-
-
 def test_login_is_rate_limited(client):
     for _ in range(10):
         client.post(

@@ -18,7 +18,6 @@ The app is a monolith: a FastAPI backend serves both the JSON API and the static
 - `rate_limit.py` — a simple in-memory per-IP sliding-window limiter (module-level dict, single-process only); applied to `/api/auth/login` and `/api/auth/register`.
 - `notifier.py` / `scheduler.py` — optional email reminder digest. `scheduler.py`'s `run_daily_reminder_job` (registered as an APScheduler cron job in `main.py`, hour controlled by `REMINDER_HOUR_UTC`) walks every user's upcoming/overdue recurring payments, credit card bills, and debts due within `NOTIFY_DAYS_BEFORE` days, and calls `notifier.send_reminder_email`. `notifier.is_email_configured()` gates everything on `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD`/`SMTP_FROM` being set — with none of those set (the default), it silently no-ops rather than erroring. LINE Notify was considered but is dead (shut down 2025-04-01); email was used instead since every `User` already has one.
 - `database.py` / `config.py` — synchronous SQLAlchemy engine and `pydantic-settings`-based config (`DATABASE_URL`, `SECRET_KEY`, SMTP settings, `NOTIFY_DAYS_BEFORE` via env vars).
-- `seed.py` — deletes and recreates a demo user (`demo@somdul.com` / `password123`) with sample wallets, cards, debts, transactions, and recurring payments. Also wired up as `POST /api/auth/reset` (requires auth).
 
 **No migration tool in active use** despite `alembic` being in `requirements.txt` — schema changes ship as edits to `models.py` plus, if altering a table that already exists on the live DB, a manual `ALTER TABLE` via `docker exec somdul-db psql ...` (see `RecurringPayment.last_paid_at` for the precedent). `SQLModel.metadata.create_all()` on startup only creates *new* tables; it never alters existing ones.
 
@@ -48,10 +47,9 @@ docker-compose up -d
 # Backend (from backend/, using the existing venv)
 source venv/bin/activate
 uvicorn app.main:app --reload --port 8005
-
-# Seed demo data (demo@somdul.com / password123)
-python -m app.seed
 ```
+
+Register an account from the login screen — there's no seeded demo account.
 
 The frontend has no separate dev server — visiting the backend root (`http://localhost:8005/`) serves `index.html`, which calls the API at `/api`.
 

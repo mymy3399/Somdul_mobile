@@ -853,21 +853,6 @@ async function apiPayRecurring(recId, walletId) {
 }
 
 // ----------------------------------------------------
-// DATABASE RESET / SEED
-// ----------------------------------------------------
-async function apiResetDatabase() {
-    const res = await fetch(`${API_BASE}/auth/reset`, {
-        method: "POST",
-        headers: getAuthHeaders()
-    });
-    
-    if (!res.ok) throw new Error("รีเซ็ตฐานข้อมูลล้มเหลว");
-    
-    // If successful, reload everything
-    await apiFetchAllData();
-}
-
-// ----------------------------------------------------
 // HELPER FUNCTIONS
 // ----------------------------------------------------
 function formatTxDate(dateStr) {

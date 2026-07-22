@@ -203,15 +203,3 @@ def change_password(
     session.add(current_user)
     session.commit()
     return {"status": "success", "message": "Password updated successfully"}
-
-@router.post("/reset")
-def reset_database(current_user: User = Depends(get_current_user)):
-    from app.seed import seed_db
-    try:
-        seed_db()
-        return {"status": "success", "message": "Database reset and seeded successfully"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database reset failed: {str(e)}"
-        )

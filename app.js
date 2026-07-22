@@ -1005,31 +1005,6 @@ async function handleLoginSubmit(e) {
     }
 }
 
-async function quickDemoLogin() {
-    try {
-        await apiLogin("demo@somdul.com", "password123");
-        alertModal("เข้าใช้งานแบบรวดเร็วสำเร็จ!");
-        
-        registerMode = false;
-        toggleRegisterMode(false);
-        document.getElementById('loginForm').reset();
-        checkLoginSession();
-        refreshAppUI();
-    } catch (err) {
-        // If seed is empty, run seed and login
-        try {
-            await apiRegister("คุณสมดุล", "demo@somdul.com", "password123");
-            alertModal("ลงทะเบียนบัญชีทดลองสำเร็จ!");
-            registerMode = false;
-            toggleRegisterMode(false);
-            checkLoginSession();
-            refreshAppUI();
-        } catch (e) {
-            alertModal("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อล็อกอินด่วนได้");
-        }
-    }
-}
-
 function handleLogout() {
     if (confirm("คุณต้องการออกจากระบบหรือไม่?")) {
         apiLogout();
@@ -1302,27 +1277,6 @@ async function deleteCard(cardId) {
             alertModal(err.message);
         }
     }
-}
-
-// ----------------------------------------------------
-// SYSTEM DEMO SEED / RESET ACTIONS
-// ----------------------------------------------------
-async function resetToDemoData() {
-    if (confirm("ต้องการรีเซ็ตฐานข้อมูลเซิร์ฟเวอร์กลับเป็นข้อมูลตัวอย่างเริ่มต้นหรือไม่?")) {
-        try {
-            await apiResetDatabase();
-            closeSettingsModal();
-            switchMainTab('home');
-            refreshAppUI();
-            alertModal("รีเซ็ตฐานข้อมูลตัวอย่างเริ่มต้นสำเร็จ!");
-        } catch (err) {
-            alertModal(err.message);
-        }
-    }
-}
-
-function clearAllData() {
-    alertModal("กรุณาใช้ฟังก์ชันรีเซ็ตระบบ หรือทำการลบกระเป๋าเงิน/บัตรเครดิตรายตัว เพื่อคงโครงสร้างผู้ใช้นะครับ");
 }
 
 // ----------------------------------------------------
@@ -2803,10 +2757,7 @@ window.downloadSlipImage = downloadSlipImage;
 window.alertModal = alertModal;
 window.closeAlertModal = closeAlertModal;
 window.toggleRegisterMode = toggleRegisterMode;
-window.quickDemoLogin = quickDemoLogin;
 window.handleLogout = handleLogout;
-window.resetToDemoData = resetToDemoData;
-window.clearAllData = clearAllData;
 window.toggleInfoModal = toggleInfoModal;
 window.openNotificationModal = openNotificationModal;
 window.closeNotificationModal = closeNotificationModal;

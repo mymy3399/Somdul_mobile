@@ -34,14 +34,11 @@ docker-compose up -d
 # Backend (from backend/, using the existing venv)
 source venv/bin/activate
 uvicorn app.main:app --reload --port 8005
-
-# Seed demo data (demo@somdul.com / password123)
-python -m app.seed
 ```
 
-Then open `http://localhost:8005/` — the frontend has no separate dev server,
-it's served by the same FastAPI process at the root path, which calls the
-API at `/api`.
+Then open `http://localhost:8005/` and register an account — the frontend
+has no separate dev server, it's served by the same FastAPI process at the
+root path, which calls the API at `/api`.
 
 ## Architecture
 
