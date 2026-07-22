@@ -563,6 +563,7 @@
                         </div>
                         <span id="strengthText" class="text-[11px] text-slate-400">ระดับความปลอดภัย: แย่มาก (ต้องการความยาว 6 ตัว ขึ้นไป ตัวเลข และสัญลักษณ์)</span>
                     </div>
+                    <button type="button" id="forgotPasswordLink" onclick="openForgotPasswordModal()" class="text-[11px] text-emerald-600 hover:underline mt-1.5">ลืมรหัสผ่าน?</button>
                 </div>
 
                 <div class="space-y-2 pt-2">
@@ -575,6 +576,52 @@
             <div class="text-xs text-slate-400 border-t border-slate-200/70 pt-4 flex justify-between">
                 <span id="loginToggleText">ยังไม่มีบัญชีใช้งาน?</span>
                 <button onclick="toggleRegisterMode()" id="loginToggleBtn" class="text-emerald-600 font-bold hover:underline">สมัครสมาชิกใหม่</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FORGOT / RESET PASSWORD MODAL -->
+    <div id="forgotPasswordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-[1000] p-4 hidden" onclick="if(event.target===this) closeForgotPasswordModal()">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-key mr-2 text-emerald-500"></i> ลืมรหัสผ่าน</h3>
+                <button onclick="closeForgotPasswordModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- Step 1: request a reset code -->
+            <div id="forgotPasswordStep1" class="space-y-3">
+                <p class="text-xs text-slate-500 leading-normal">กรอกอีเมลที่ใช้สมัคร เราจะส่งโค้ดสำหรับตั้งรหัสผ่านใหม่ไปให้ (ใช้ได้ภายใน 30 นาที)</p>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">อีเมล</label>
+                    <input type="email" id="forgotPasswordEmail" placeholder="you@example.com" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                </div>
+                <button onclick="handleForgotPasswordSubmit()" class="w-full bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-3 rounded-xl transition-colors text-sm">
+                    ส่งโค้ดตั้งรหัสผ่านใหม่
+                </button>
+                <button onclick="showForgotPasswordStep(2)" class="w-full text-[11px] text-slate-400 hover:underline text-center">มีโค้ดอยู่แล้ว? กดที่นี่เพื่อตั้งรหัสผ่านใหม่</button>
+            </div>
+
+            <!-- Step 2: paste the code + set a new password -->
+            <div id="forgotPasswordStep2" class="space-y-3 hidden">
+                <p class="text-xs text-slate-500 leading-normal">นำโค้ดที่ได้รับทางอีเมลมาวางด้านล่าง พร้อมตั้งรหัสผ่านใหม่</p>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">โค้ดตั้งรหัสผ่านใหม่</label>
+                    <textarea id="resetPasswordToken" rows="3" placeholder="วางโค้ดจากอีเมลที่นี่" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-xs font-mono"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">รหัสผ่านใหม่</label>
+                    <input type="password" id="resetPasswordNew" oninput="checkResetPasswordStrength(this.value)" placeholder="••••••••" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                    <div id="resetPasswordStrengthWrapper" class="mt-1.5 space-y-1">
+                        <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                            <div id="resetStrengthBar" class="h-full transition-all duration-300 w-0 bg-rose-500"></div>
+                        </div>
+                        <span id="resetStrengthText" class="text-[11px] text-slate-400">ระดับความปลอดภัย: แย่มาก (ต้องการความยาว 6 ตัว ขึ้นไป ตัวเลข และสัญลักษณ์)</span>
+                    </div>
+                </div>
+                <button onclick="handleResetPasswordSubmit()" class="w-full bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-3 rounded-xl transition-colors text-sm">
+                    ตั้งรหัสผ่านใหม่
+                </button>
+                <button onclick="showForgotPasswordStep(1)" class="w-full text-[11px] text-slate-400 hover:underline text-center">ยังไม่ได้รับโค้ด? กดที่นี่เพื่อขอใหม่</button>
             </div>
         </div>
     </div>
@@ -1295,6 +1342,14 @@
                                 <span class="block text-lg font-bold">ใหญ่มาก</span>
                             </button>
                         </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3.5">
+                        <h4 class="font-bold text-slate-800"><i class="fa-solid fa-cloud-arrow-down mr-1 text-slate-600"></i> สำรองข้อมูล</h4>
+                        <p class="text-xs text-slate-500 leading-normal">ดาวน์โหลดข้อมูลทั้งหมดของคุณ (กระเป๋าเงิน, บัตรเครดิต, ลูกหนี้, รายการธุรกรรม, บิลประจำ, งบประมาณ ฯลฯ) เป็นไฟล์ JSON เก็บไว้เป็นข้อมูลสำรอง</p>
+                        <button onclick="exportFullBackup()" class="w-full bg-white hover:bg-slate-50 border border-slate-200/70 text-slate-700 font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-download"></i> สำรองข้อมูลทั้งหมด (JSON)
+                        </button>
                     </div>
 
                     <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3.5">

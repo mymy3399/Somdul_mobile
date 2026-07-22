@@ -33,10 +33,35 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+PASSWORD_RESET_EXPIRE_MINUTES = 30
+
+def create_password_reset_token(email: str, token_version: int) -> str:
+    """A separate, short-lived, single-purpose token — distinct from a login
+    access token so it can't be used to call any other authenticated
+    endpoint. Carries the token_version at issuance time so that using it
+    (which bumps token_version) or a subsequent unrelated password change
+    invalidates any other copy of the same reset token still in flight."""
+    return create_access_token(
+        data={"sub": email, "tv": token_version, "purpose": "password_reset"},
+        expires_delta=timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES),
+    )
+
+def verify_password_reset_token(token: str) -> Optional[dict]:
+    """Returns the decoded payload if `token` is a valid, unexpired,
+    unconsumed password-reset token, else None. Callers still need to check
+    the embedded tv against the user's current token_version themselves."""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        return None
+    if payload.get("purpose") != "password_reset":
+        return None
+    return payload
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -60,6 +85,13 @@ async def get_current_user(
     result = await session.exec(statement)
     user = result.first()
     if user is None:
+        raise credentials_exception
+
+    # A token minted before the user's last password change (or a future
+    # "log out everywhere" action) carries an older token_version and is no
+    # longer honored, even though its signature/expiry are still otherwise
+    # valid — see User.token_version.
+    if payload.get("tv") != user.token_version:
         raise credentials_exception
 
     return user

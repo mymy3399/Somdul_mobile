@@ -7,8 +7,16 @@ from typing import Optional
 
 from app.database import get_session
 from app.models import User
+from app.notifier import send_password_reset_email
 from app.rate_limit import rate_limiter
-from app.security import get_current_user, get_password_hash, verify_password, create_access_token
+from app.security import (
+    get_current_user,
+    get_password_hash,
+    verify_password,
+    create_access_token,
+    create_password_reset_token,
+    verify_password_reset_token,
+)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -16,6 +24,9 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 # password a few times, but blunts brute-force / credential-stuffing loops.
 login_rate_limit = rate_limiter(max_attempts=10, window_seconds=60)
 register_rate_limit = rate_limiter(max_attempts=10, window_seconds=60)
+change_password_rate_limit = rate_limiter(max_attempts=10, window_seconds=60)
+forgot_password_rate_limit = rate_limiter(max_attempts=5, window_seconds=60)
+reset_password_rate_limit = rate_limiter(max_attempts=10, window_seconds=60)
 
 def validate_password_strength(password: str) -> None:
     if len(password) < 6:
@@ -46,6 +57,13 @@ class UpdateProfileSchema(BaseModel):
 
 class ChangePasswordSchema(BaseModel):
     old_password: str
+    new_password: str
+
+class ForgotPasswordSchema(BaseModel):
+    email: EmailStr
+
+class ResetPasswordSchema(BaseModel):
+    token: str
     new_password: str
 
 class UserResponse(BaseModel):
@@ -123,7 +141,7 @@ async def login(
         )
 
     # Create JWT access token
-    access_token = create_access_token(data={"sub": user.email})
+    access_token = create_access_token(data={"sub": user.email, "tv": user.token_version})
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
@@ -192,7 +210,8 @@ async def update_promptpay(
 async def change_password(
     data: ChangePasswordSchema,
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    _rl=Depends(change_password_rate_limit)
 ):
     if not verify_password(data.old_password, current_user.hashed_password):
         raise HTTPException(
@@ -204,6 +223,71 @@ async def change_password(
     validate_password_strength(data.new_password)
 
     current_user.hashed_password = get_password_hash(data.new_password)
+    # Invalidates every JWT issued before this point (see User.token_version
+    # / get_current_user) — a lost/stolen device's old session can't keep
+    # using the account just because its token hasn't expired yet.
+    current_user.token_version += 1
     session.add(current_user)
     await session.commit()
-    return {"status": "success", "message": "Password updated successfully"}
+
+    # Re-issue a token for *this* session so the user isn't immediately
+    # logged out by the token_version bump they just triggered.
+    new_token = create_access_token(data={"sub": current_user.email, "tv": current_user.token_version})
+    return {
+        "status": "success",
+        "message": "Password updated successfully",
+        "access_token": new_token,
+        "token_type": "bearer",
+    }
+
+@router.post("/forgot-password")
+async def forgot_password(
+    data: ForgotPasswordSchema,
+    session: AsyncSession = Depends(get_session),
+    _rl=Depends(forgot_password_rate_limit)
+):
+    """Always returns the same generic response whether or not the email is
+    registered, so this endpoint can't be used to enumerate accounts."""
+    statement = select(User).where(User.email == data.email.lower())
+    result = await session.exec(statement)
+    user = result.first()
+    if user:
+        reset_token = create_password_reset_token(user.email, user.token_version)
+        send_password_reset_email(user.email, user.name, reset_token)
+
+    return {
+        "status": "success",
+        "message": "หากอีเมลนี้มีอยู่ในระบบ เราได้ส่งรหัสสำหรับตั้งรหัสผ่านใหม่ไปให้แล้ว",
+    }
+
+@router.post("/reset-password")
+async def reset_password(
+    data: ResetPasswordSchema,
+    session: AsyncSession = Depends(get_session),
+    _rl=Depends(reset_password_rate_limit)
+):
+    payload = verify_password_reset_token(data.token)
+    invalid_token_exc = HTTPException(status_code=400, detail="โค้ดตั้งรหัสผ่านใหม่ไม่ถูกต้องหรือหมดอายุแล้ว")
+    if payload is None:
+        raise invalid_token_exc
+
+    email = payload.get("sub")
+    statement = select(User).where(User.email == email)
+    result = await session.exec(statement)
+    user = result.first()
+    # The embedded tv must still match the user's *current* token_version —
+    # it won't if this exact reset token was already used once (reset bumps
+    # token_version below) or if the password was changed some other way
+    # since the token was issued, so a captured/replayed reset link/code
+    # can't be used a second time.
+    if user is None or payload.get("tv") != user.token_version:
+        raise invalid_token_exc
+
+    validate_password_strength(data.new_password)
+
+    user.hashed_password = get_password_hash(data.new_password)
+    user.token_version += 1
+    session.add(user)
+    await session.commit()
+
+    return {"status": "success", "message": "ตั้งรหัสผ่านใหม่สำเร็จแล้ว กรุณาเข้าสู่ระบบอีกครั้ง"}

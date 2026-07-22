@@ -134,10 +134,22 @@ async def export_transactions_csv(
 
 @router.get("", response_model=List[TransactionResponseSchema])
 async def list_transactions(
+    skip: int = 0,
+    limit: int = 1000,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
 ):
-    stmt = select(Transaction).where(Transaction.user_id == current_user.id, Transaction.deleted_at == None).order_by(Transaction.created_at.desc())
+    # limit is capped (not just defaulted) so a caller can't request an
+    # unbounded result set by passing an arbitrarily large value — 1000 is
+    # generous enough that normal personal use never notices it.
+    limit = min(limit, 1000)
+    stmt = (
+        select(Transaction)
+        .where(Transaction.user_id == current_user.id, Transaction.deleted_at == None)
+        .order_by(Transaction.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
     result = await session.exec(stmt)
     return result.all()
 

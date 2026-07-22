@@ -9,7 +9,7 @@ from sqlmodel import SQLModel
 
 from app.config import settings, INSECURE_DEFAULT_SECRET_KEY
 from app.database import engine
-from app.routers import auth, wallets, credit_cards, debtors, transactions, recurring_payments, notifications, budgets, categories, quick_templates
+from app.routers import auth, wallets, credit_cards, debtors, transactions, recurring_payments, notifications, budgets, categories, quick_templates, export
 from app.scheduler import run_daily_reminder_job
 
 logger = logging.getLogger("uvicorn.error")
@@ -32,6 +32,16 @@ async def on_startup():
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
     if settings.SECRET_KEY == INSECURE_DEFAULT_SECRET_KEY:
+        if settings.ENVIRONMENT != "development":
+            # This key is visible to anyone reading config.py on GitHub —
+            # starting a real deployment with it means anyone can forge a
+            # valid JWT for any user. Fail loudly instead of quietly
+            # running an unauthenticatable-in-practice API.
+            raise RuntimeError(
+                "Refusing to start: ENVIRONMENT is not 'development' but SECRET_KEY is still "
+                "the insecure built-in default. Set a real SECRET_KEY environment variable "
+                "(e.g. `openssl rand -hex 32`) before deploying."
+            )
         logger.warning(
             "SECRET_KEY is using the built-in insecure default. "
             "Set the SECRET_KEY environment variable before running in production — "
@@ -63,6 +73,7 @@ app.include_router(notifications.router, prefix="/api")
 app.include_router(budgets.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")
 app.include_router(quick_templates.router, prefix="/api")
+app.include_router(export.router, prefix="/api")
 
 # Serve frontend files from parent directory (/root/somdul)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -9,6 +9,14 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
 
+    # Gates the SECRET_KEY check in main.py's startup handler — refuses to
+    # boot with the insecure default key outside of local development, since
+    # that key is visible to anyone reading this file on GitHub and lets
+    # them forge a valid JWT for any user. Set ENVIRONMENT=production (or
+    # anything other than "development") once you configure a real
+    # SECRET_KEY for a real deployment.
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
         "postgresql://somdul:somdul_pass@127.0.0.1:5434/somdul"

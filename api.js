@@ -360,6 +360,23 @@ async function apiExportTransactionsCSV() {
     window.URL.revokeObjectURL(url);
 }
 
+async function apiExportFullBackup() {
+    const res = await fetch(`${API_BASE}/export/full`, {
+        headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error("ไม่สามารถสำรองข้อมูลได้");
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `somdul-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+}
+
 async function apiUpdateProfile(name, email) {
     const res = await fetch(`${API_BASE}/auth/profile`, {
         method: "PUT",
@@ -409,8 +426,38 @@ async function apiChangePassword(oldPassword, newPassword) {
         const err = await res.json();
         throw new Error(getErrorMessage(err, "ไม่สามารถเปลี่ยนรหัสผ่านได้"));
     }
-    
-    return await res.json();
+
+    const data = await res.json();
+    // Changing password revokes every previously-issued token (server-side
+    // token_version bump) so a lost/stolen device's old session can't keep
+    // using the account — the response includes a fresh token for *this*
+    // session so the user isn't immediately logged out by their own change.
+    if (data.access_token) {
+        localStorage.setItem("somdul_jwt_token", data.access_token);
+    }
+    return data;
+}
+
+async function apiForgotPassword(email) {
+    const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(getErrorMessage(data, "ไม่สามารถส่งคำขอตั้งรหัสผ่านใหม่ได้"));
+    return data;
+}
+
+async function apiResetPassword(token, newPassword) {
+    const res = await fetch(`${API_BASE}/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, new_password: newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(getErrorMessage(data, "ไม่สามารถตั้งรหัสผ่านใหม่ได้"));
+    return data;
 }
 
 // ----------------------------------------------------

@@ -1,6 +1,26 @@
 // app.js - Modular UI Rendering and Event Handlers Layer for Somdul
 
 // ----------------------------------------------------
+// HTML ESCAPING
+// ----------------------------------------------------
+// Every render*()/show*Detail() function below builds markup with template
+// literals and injects it via innerHTML/insertAdjacentHTML — any
+// user-supplied string (wallet/card/debtor/category/quick-template names,
+// transaction descriptions, memos, contact info) interpolated in raw would
+// let stored HTML/script in one of those fields execute in the viewer's own
+// session (and since the JWT lives in localStorage, that's session
+// hijacking, not just a cosmetic glitch). Wrap every such value in esc().
+function esc(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// ----------------------------------------------------
 // FONT SIZE PREFERENCE
 // ----------------------------------------------------
 // Scales the root font-size, which cascades through every Tailwind text-*
@@ -248,8 +268,8 @@ function renderCategorySummary() {
             <div class="space-y-1">
                 <div class="flex justify-between items-center text-xs">
                     <div class="flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full ${cat.color}"></span>
-                        <span class="font-bold text-slate-700"><i class="fa-solid ${cat.icon} mr-1 text-[11px] text-slate-400"></i> ${cat.name}</span>
+                        <span class="w-2 h-2 rounded-full ${esc(cat.color)}"></span>
+                        <span class="font-bold text-slate-700"><i class="fa-solid ${esc(cat.icon)} mr-1 text-[11px] text-slate-400"></i> ${esc(cat.name)}</span>
                     </div>
                     <div class="text-right">${rightLabel}</div>
                 </div>
@@ -275,7 +295,7 @@ function renderDashboardWallets() {
         const cardHTML = `
             <div class="bg-white rounded-2xl border border-slate-200/70 p-3 shadow-xs flex flex-col justify-between min-h-[75px] relative overflow-hidden">
                 <div class="flex justify-between items-start">
-                    <span class="text-[10px] text-slate-400 font-semibold uppercase truncate block w-[70%]">${w.name}</span>
+                    <span class="text-[10px] text-slate-400 font-semibold uppercase truncate block w-[70%]">${esc(w.name)}</span>
                     <i class="${iconClass} text-xs"></i>
                 </div>
                 <span class="font-bold text-slate-800 text-[13px] block mt-1.5">฿${w.balance.toLocaleString('th-TH', { maximumFractionDigits: 2 })}</span>
@@ -347,6 +367,14 @@ async function renderMonthlyTrendChart() {
 async function exportTransactionsCSV() {
     try {
         await apiExportTransactionsCSV();
+    } catch (err) {
+        alertModal(err.message);
+    }
+}
+
+async function exportFullBackup() {
+    try {
+        await apiExportFullBackup();
     } catch (err) {
         alertModal(err.message);
     }
@@ -427,10 +455,10 @@ function renderTransactions() {
                     </div>
                     <span class="font-bold ${amountColor} text-base">${amountSign}฿${tx.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
                 </div>
-                <h4 class="font-bold text-slate-800 text-sm mb-1">${tx.desc}</h4>
+                <h4 class="font-bold text-slate-800 text-sm mb-1">${esc(tx.desc)}</h4>
                 <div class="flex items-center justify-between text-xs text-slate-400">
-                    <span>${sourceName}</span>
-                    ${cat ? `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-normal shrink-0">${cat.name}</span>` : ''}
+                    <span>${esc(sourceName)}</span>
+                    ${cat ? `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-normal shrink-0">${esc(cat.name)}</span>` : ''}
                 </div>
                 <span class="text-[11px] text-slate-400 block mt-1.5 pt-1.5 border-t border-slate-100">${tx.date}</span>
             </div>
@@ -442,10 +470,10 @@ function renderTransactions() {
                     </div>
                     <div>
                         <h4 class="font-bold text-slate-800 flex items-center gap-1.5">
-                            ${tx.desc}
-                            ${cat ? `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-normal shrink-0">${cat.name}</span>` : ''}
+                            ${esc(tx.desc)}
+                            ${cat ? `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-normal shrink-0">${esc(cat.name)}</span>` : ''}
                         </h4>
-                        <span class="text-[11px] text-slate-400 block mt-0.5">ผ่าน: ${sourceName} | ${tx.date}</span>
+                        <span class="text-[11px] text-slate-400 block mt-0.5">ผ่าน: ${esc(sourceName)} | ${tx.date}</span>
                     </div>
                 </div>
                 <span class="font-bold ${amountColor} text-sm">${amountSign}฿${tx.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
@@ -511,7 +539,7 @@ function renderDebtors() {
                         <i class="fa-solid ${debtor.type === 'CREDIT_CARD_INSTALLMENT' ? 'fa-credit-card' : 'fa-money-bill-wave'} text-xs"></i>
                     </div>
                     <div class="min-w-0">
-                        <h4 class="font-bold text-slate-800 truncate">${debtor.name}</h4>
+                        <h4 class="font-bold text-slate-800 truncate">${esc(debtor.name)}</h4>
                         <span class="text-[11px] text-slate-400 block mt-0.5 truncate">${installmentText}</span>
                     </div>
                 </div>
@@ -524,8 +552,8 @@ function renderDebtors() {
             <div onclick="showDebtorDetail('${debtor.id}')" class="bg-white rounded-2xl border border-slate-200/70 p-5 shadow-sm relative overflow-hidden cursor-pointer hover:border-emerald-200 transition-colors">
                 <div class="flex justify-between items-start mb-2">
                     <div>
-                        <h4 class="font-bold text-slate-800 text-sm">${debtor.name}</h4>
-                        <p class="text-xs text-slate-400 mt-0.5 mb-1">${debtor.memo}</p>
+                        <h4 class="font-bold text-slate-800 text-sm">${esc(debtor.name)}</h4>
+                        <p class="text-xs text-slate-400 mt-0.5 mb-1">${esc(debtor.memo)}</p>
                         <div class="flex flex-wrap gap-1 mt-1">
                             ${badgeHTML}
                             <span class="text-[11px] text-slate-400 self-center">${installmentText}</span>
@@ -589,7 +617,7 @@ function renderCreditCards() {
                         CARD
                     </div>
                     <div class="min-w-0">
-                        <h4 class="font-bold text-slate-800 truncate">${card.name}</h4>
+                        <h4 class="font-bold text-slate-800 truncate">${esc(card.name)}</h4>
                         <span class="text-[11px] text-slate-400 block mt-0.5 truncate">ครบกำหนดวันที่ ${card.dueDay} | ว่างใช้ได้ ฿${availableLimit.toLocaleString('th-TH')}</span>
                     </div>
                 </div>
@@ -603,7 +631,7 @@ function renderCreditCards() {
                             CARD
                         </div>
                         <div>
-                            <h4 class="font-bold text-slate-800 text-xs">${card.name}</h4>
+                            <h4 class="font-bold text-slate-800 text-xs">${esc(card.name)}</h4>
                             <span class="text-[11px] text-slate-400 block mt-0.5">ตัดรอบวันที่ ${card.billingDay} | ครบกำหนดจ่ายวันที่ ${card.dueDay} ของเดือน</span>
                         </div>
                     </div>
@@ -664,7 +692,7 @@ function renderRecurring() {
                         <i class="fa-solid fa-rotate-right text-xs"></i>
                     </div>
                     <div class="min-w-0">
-                        <h4 class="font-bold text-slate-800 truncate">${rec.name}</h4>
+                        <h4 class="font-bold text-slate-800 truncate">${esc(rec.name)}</h4>
                         <span class="text-[11px] text-slate-400 block mt-0.5 truncate">ครบกำหนดวันที่ ${rec.dueDay} ของทุกเดือน</span>
                     </div>
                 </div>
@@ -680,7 +708,7 @@ function renderRecurring() {
                         <i class="fa-solid fa-rotate-right text-sm"></i>
                     </div>
                     <div>
-                        <h4 class="font-bold text-slate-800 text-xs">${rec.name}</h4>
+                        <h4 class="font-bold text-slate-800 text-xs">${esc(rec.name)}</h4>
                         <span class="text-[11px] text-slate-400 block mt-0.5">ครบกำหนดวันที่ ${rec.dueDay} ของทุกเดือน</span>
                         <div class="mt-1">${statusBadge}</div>
                     </div>
@@ -750,8 +778,8 @@ function renderTimeline() {
                 <div class="my-1 space-y-1">
                     ${eventsHTML}
                 </div>
-                <div class="text-[9px] text-slate-400 truncate mt-1" title="${namesText.join(', ')}">
-                    ${item.events.map(e => e.name).join(' & ')}
+                <div class="text-[9px] text-slate-400 truncate mt-1" title="${esc(namesText.join(', '))}">
+                    ${esc(item.events.map(e => e.name).join(' & '))}
                 </div>
             </div>
         `;
@@ -903,7 +931,7 @@ function renderNotifications() {
                         </div>
                         <div>
                             <span class="font-bold text-slate-800">ลูกหนี้ค้างชำระคืนเรา</span>
-                            <p class="text-slate-500 text-xs mt-0.5">${d.name} ต้องโอนคืนยอดงวดถัดไป ฿${nextPaybackVal.toLocaleString('th-TH')} (ดีลวันที่ ${d.dueDay})</p>
+                            <p class="text-slate-500 text-xs mt-0.5">${esc(d.name)} ต้องโอนคืนยอดงวดถัดไป ฿${nextPaybackVal.toLocaleString('th-TH')} (ดีลวันที่ ${d.dueDay})</p>
                         </div>
                     </div>
                     <button onclick="dismissNotification('${d.id}')" class="w-6 h-6 rounded-full bg-white hover:bg-slate-100 border border-slate-200/70 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="อ่านแล้ว">
@@ -926,7 +954,7 @@ function renderNotifications() {
                         </div>
                         <div>
                             <span class="font-bold text-slate-800">บิลบัตรเครดิตรอจ่าย</span>
-                            <p class="text-slate-500 text-xs mt-0.5">บัตร ${c.name} มียอดค้างรอเคลียร์ ฿${c.balance.toLocaleString('th-TH')} (กำหนดชำระวันที่ ${c.dueDay})</p>
+                            <p class="text-slate-500 text-xs mt-0.5">บัตร ${esc(c.name)} มียอดค้างรอเคลียร์ ฿${c.balance.toLocaleString('th-TH')} (กำหนดชำระวันที่ ${c.dueDay})</p>
                         </div>
                     </div>
                     <button onclick="dismissNotification('${c.id}')" class="w-6 h-6 rounded-full bg-white hover:bg-slate-100 border border-slate-200/70 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="อ่านแล้ว">
@@ -949,7 +977,7 @@ function renderNotifications() {
                         </div>
                         <div>
                             <span class="font-bold text-slate-800">ค่าบริการรายเดือน (Subscription)</span>
-                            <p class="text-slate-500 text-xs mt-0.5">รายการ ${r.name} ยอด ฿${r.amount.toLocaleString('th-TH')} (ดีลกำหนดจ่ายวันที่ ${r.dueDay})</p>
+                            <p class="text-slate-500 text-xs mt-0.5">รายการ ${esc(r.name)} ยอด ฿${r.amount.toLocaleString('th-TH')} (ดีลกำหนดจ่ายวันที่ ${r.dueDay})</p>
                         </div>
                     </div>
                     <button onclick="dismissNotification('${r.id}')" class="w-6 h-6 rounded-full bg-white hover:bg-slate-100 border border-slate-200/70 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="อ่านแล้ว">
@@ -1119,6 +1147,71 @@ function checkChangePasswordStrength(val) {
     txt.className = `text-[10px] ${strength.textClass}`;
 }
 
+function checkResetPasswordStrength(val) {
+    const wrapper = document.getElementById('resetPasswordStrengthWrapper');
+    if (!wrapper) return;
+
+    const strength = calculatePasswordStrength(val);
+    const bar = document.getElementById('resetStrengthBar');
+    const txt = document.getElementById('resetStrengthText');
+
+    bar.className = `h-full transition-all duration-300 ${strength.color}`;
+    bar.style.width = `${(strength.score / 4) * 100}%`;
+    txt.innerText = `ระดับความปลอดภัย: ${strength.text}`;
+    txt.className = `text-[11px] ${strength.textClass}`;
+}
+
+// ----------------------------------------------------
+// FORGOT / RESET PASSWORD
+// ----------------------------------------------------
+function openForgotPasswordModal() {
+    document.getElementById('forgotPasswordEmail').value = document.getElementById('loginEmailInput').value || '';
+    showForgotPasswordStep(1);
+    document.getElementById('forgotPasswordModal').classList.remove('hidden');
+}
+
+function closeForgotPasswordModal() {
+    document.getElementById('forgotPasswordModal').classList.add('hidden');
+}
+
+function showForgotPasswordStep(step) {
+    document.getElementById('forgotPasswordStep1').classList.toggle('hidden', step !== 1);
+    document.getElementById('forgotPasswordStep2').classList.toggle('hidden', step !== 2);
+}
+
+async function handleForgotPasswordSubmit() {
+    const email = document.getElementById('forgotPasswordEmail').value.trim();
+    if (!email) {
+        alertModal("กรุณากรอกอีเมล");
+        return;
+    }
+    try {
+        const res = await apiForgotPassword(email);
+        alertModal(res.message || "หากอีเมลนี้มีอยู่ในระบบ เราได้ส่งโค้ดตั้งรหัสผ่านใหม่ไปให้แล้ว");
+        showForgotPasswordStep(2);
+    } catch (err) {
+        alertModal(err.message);
+    }
+}
+
+async function handleResetPasswordSubmit() {
+    const token = document.getElementById('resetPasswordToken').value.trim();
+    const newPassword = document.getElementById('resetPasswordNew').value;
+    if (!token || !newPassword) {
+        alertModal("กรุณากรอกโค้ดและรหัสผ่านใหม่ให้ครบ");
+        return;
+    }
+    try {
+        const res = await apiResetPassword(token, newPassword);
+        alertModal(res.message || "ตั้งรหัสผ่านใหม่สำเร็จแล้ว กรุณาเข้าสู่ระบบอีกครั้ง");
+        closeForgotPasswordModal();
+        document.getElementById('resetPasswordToken').value = '';
+        document.getElementById('resetPasswordNew').value = '';
+    } catch (err) {
+        alertModal(err.message);
+    }
+}
+
 function toggleRegisterMode(forceState) {
     registerMode = (forceState !== undefined) ? forceState : !registerMode;
     const title = document.getElementById('loginTitle');
@@ -1128,7 +1221,8 @@ function toggleRegisterMode(forceState) {
     const toggleBtn = document.getElementById('loginToggleBtn');
     const loginNameInput = document.getElementById('loginNameInput');
     const pwStrength = document.getElementById('passwordStrengthWrapper');
-    
+    const forgotLink = document.getElementById('forgotPasswordLink');
+
     if (registerMode) {
         title.innerText = "สมัครสมาชิก Somdul";
         nameField.classList.remove('hidden');
@@ -1137,6 +1231,7 @@ function toggleRegisterMode(forceState) {
         toggleText.innerText = "มีบัญชีอยู่แล้ว?";
         toggleBtn.innerText = "เข้าสู่ระบบ";
         if (pwStrength) pwStrength.classList.remove('hidden');
+        if (forgotLink) forgotLink.classList.add('hidden');
     } else {
         title.innerText = "เข้าสู่ระบบ Somdul";
         nameField.classList.add('hidden');
@@ -1145,6 +1240,7 @@ function toggleRegisterMode(forceState) {
         toggleText.innerText = "ยังไม่มีบัญชีใช้งาน?";
         toggleBtn.innerText = "สมัครสมาชิกใหม่";
         if (pwStrength) pwStrength.classList.add('hidden');
+        if (forgotLink) forgotLink.classList.remove('hidden');
     }
 }
 
@@ -1845,7 +1941,7 @@ async function openEditDebtModal(debtId) {
         } else {
             historyEl.innerHTML = history.map(h => `
                 <div class="bg-slate-50 rounded-lg p-2 border border-slate-200/70">
-                    <p class="text-slate-700">${h.summary}</p>
+                    <p class="text-slate-700">${esc(h.summary)}</p>
                     <span class="text-[11px] text-slate-400">${formatThaiDateOnly(h.changed_at)}</span>
                 </div>
             `).join('');
@@ -1929,7 +2025,7 @@ function showTransactionDetail(txId) {
                 </div>
                 <div>
                     <span class="text-slate-400 block">หมวดหมู่:</span>
-                    <span class="font-bold text-slate-700">${catName}</span>
+                    <span class="font-bold text-slate-700">${esc(catName)}</span>
                 </div>
                 <div>
                     <span class="text-slate-400 block">วันเวลาทำรายการ:</span>
@@ -1937,11 +2033,11 @@ function showTransactionDetail(txId) {
                 </div>
                 <div>
                     <span class="text-slate-400 block">บัญชี/ช่องทาง:</span>
-                    <span class="font-bold text-slate-700">${sourceName}</span>
+                    <span class="font-bold text-slate-700">${esc(sourceName)}</span>
                 </div>
                 <div class="col-span-2">
                     <span class="text-slate-400 block">คำอธิบาย:</span>
-                    <span class="font-bold text-slate-700 text-sm">${tx.desc}</span>
+                    <span class="font-bold text-slate-700 text-sm">${esc(tx.desc)}</span>
                 </div>
                 <div class="col-span-2">
                     <span class="text-slate-400 block">รหัสอ้างอิง:</span>
@@ -2022,7 +2118,7 @@ function showDebtorDetail(debtorId) {
         extraInfoHTML = `
             <div>
                 <span class="text-slate-400 block">บริการรายเดือนหลัก:</span>
-                <span class="font-bold text-slate-700">${subName}</span>
+                <span class="font-bold text-slate-700">${esc(subName)}</span>
             </div>
         `;
     }
@@ -2038,7 +2134,7 @@ function showDebtorDetail(debtorId) {
             <div class="grid grid-cols-2 gap-y-3 gap-x-2 border-t border-slate-200/70 pt-3">
                 <div>
                     <span class="text-slate-400 block">ชื่อลูกหนี้/เพื่อน:</span>
-                    <span class="font-bold text-slate-800">${debtor.name}</span>
+                    <span class="font-bold text-slate-800">${esc(debtor.name)}</span>
                 </div>
                 <div>
                     <span class="text-slate-400 block">ประเภทหนี้:</span>
@@ -2046,12 +2142,12 @@ function showDebtorDetail(debtorId) {
                 </div>
                 <div class="col-span-2">
                     <span class="text-slate-400 block">บันทึกเพิ่มเติม:</span>
-                    <span class="font-bold text-slate-700 text-sm">${debtor.memo}</span>
+                    <span class="font-bold text-slate-700 text-sm">${esc(debtor.memo)}</span>
                 </div>
                 ${debtor.type === 'SHARED_SUBSCRIPTION' ? extraInfoHTML : `
                 <div>
                     <span class="text-slate-400 block">ผูกกับบัตรเครดิต:</span>
-                    <span class="font-bold text-slate-700">${cardName}</span>
+                    <span class="font-bold text-slate-700">${esc(cardName)}</span>
                 </div>
                 `}
                 <div>
@@ -2171,7 +2267,7 @@ function showCardDetail(cardId) {
             <div class="grid grid-cols-2 gap-y-3 gap-x-2 border-t border-slate-200/70 pt-3">
                 <div>
                     <span class="text-slate-400 block">ชื่อบัตรเครดิต:</span>
-                    <span class="font-bold text-slate-800">${card.name}</span>
+                    <span class="font-bold text-slate-800">${esc(card.name)}</span>
                 </div>
                 <div>
                     <span class="text-slate-400 block">วงเงินคงเหลือว่างใช้:</span>
@@ -2217,7 +2313,7 @@ function showRecurringDetail(recId) {
             <div class="grid grid-cols-2 gap-y-3 gap-x-2 border-t border-slate-200/70 pt-3">
                 <div class="col-span-2">
                     <span class="text-slate-400 block">ชื่อบริการ / รายจ่าย:</span>
-                    <span class="font-bold text-slate-800 text-sm">${rec.name}</span>
+                    <span class="font-bold text-slate-800 text-sm">${esc(rec.name)}</span>
                 </div>
                 <div>
                     <span class="text-slate-400 block">กำหนดจ่ายของทุกเดือน:</span>
@@ -2454,7 +2550,7 @@ function renderSettingsBudgets() {
         const itemHTML = `
             <div class="flex items-center justify-between gap-2 p-3 bg-white border border-slate-200/70 rounded-xl text-xs">
                 <div class="flex-1 min-w-0">
-                    <span class="font-bold text-slate-800"><i class="fa-solid ${cat.icon} mr-1 text-[11px] text-slate-400"></i> ${cat.name}</span>
+                    <span class="font-bold text-slate-800"><i class="fa-solid ${esc(cat.icon)} mr-1 text-[11px] text-slate-400"></i> ${esc(cat.name)}</span>
                     ${budget ? `<span class="text-[11px] ${overBudget ? 'text-rose-500 font-semibold' : 'text-slate-400'} block mt-0.5">ใช้ไปแล้ว ฿${spent.toLocaleString('th-TH', { minimumFractionDigits: 2 })} / ฿${budget.monthlyLimit.toLocaleString('th-TH')}${overBudget ? ' (เกินงบ!)' : ''}</span>` : `<span class="text-[11px] text-slate-400 block mt-0.5">ยังไม่ได้ตั้งงบ</span>`}
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
@@ -2501,8 +2597,8 @@ function updateCategoryPreview() {
     const icon = document.getElementById('setCategoryIcon').value;
     const color = document.getElementById('setCategoryColor').value;
     const preview = document.getElementById('categoryPreviewIcon');
-    preview.className = `w-7 h-7 rounded-lg flex items-center justify-center bg-${color}-500/10 text-${color}-600`;
-    preview.innerHTML = `<i class="fa-solid ${icon} text-xs"></i>`;
+    preview.className = `w-7 h-7 rounded-lg flex items-center justify-center bg-${esc(color)}-500/10 text-${esc(color)}-600`;
+    preview.innerHTML = `<i class="fa-solid ${esc(icon)} text-xs"></i>`;
 }
 
 function showAddCategoryForm() {
@@ -2589,9 +2685,9 @@ function renderSettingsCategories() {
         const itemHTML = `
             <div class="flex items-center justify-between p-3 text-xs">
                 <div class="flex items-center gap-2 min-w-0">
-                    <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${cat.color}/10 ${cat.textColor}"><i class="fa-solid ${cat.icon}"></i></span>
+                    <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${esc(cat.color)}/10 ${esc(cat.textColor)}"><i class="fa-solid ${esc(cat.icon)}"></i></span>
                     <div class="min-w-0">
-                        <span class="font-bold text-slate-800 block truncate">${cat.name}</span>
+                        <span class="font-bold text-slate-800 block truncate">${esc(cat.name)}</span>
                         <span class="text-[11px] text-slate-400 block">${cat.txType === 'EXPENSE' ? 'รายจ่าย' : 'รายรับ'}</span>
                     </div>
                 </div>
@@ -2697,8 +2793,8 @@ function renderSettingsQuickTemplates() {
         const itemHTML = `
             <div class="flex items-center justify-between p-3 text-xs">
                 <div class="min-w-0">
-                    <span class="font-bold text-slate-800 block truncate">${t.text}</span>
-                    <span class="text-[11px] text-slate-400 block truncate">${t.description}${cat ? ` · ${cat.name}` : ''}</span>
+                    <span class="font-bold text-slate-800 block truncate">${esc(t.text)}</span>
+                    <span class="text-[11px] text-slate-400 block truncate">${esc(t.description)}${cat ? ` · ${esc(cat.name)}` : ''}</span>
                 </div>
                 <div class="flex gap-1 shrink-0">
                     <button onclick="editQuickTemplate('${t.value}')" class="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -2723,8 +2819,8 @@ function renderSettingsWallets() {
         const itemHTML = `
             <div class="flex items-center justify-between p-3 text-xs">
                 <div>
-                    <span class="font-bold text-slate-800">${w.name}</span>
-                    <span class="text-[11px] text-slate-400 block">${w.type} | ฿${w.balance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                    <span class="font-bold text-slate-800">${esc(w.name)}</span>
+                    <span class="text-[11px] text-slate-400 block">${esc(w.type)} | ฿${w.balance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div class="flex gap-1">
                     <button onclick="editWallet('${w.id}')" class="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -2749,7 +2845,7 @@ function renderSettingsCards() {
         const itemHTML = `
             <div class="flex items-center justify-between p-3 text-xs">
                 <div>
-                    <span class="font-bold text-slate-800">${c.name}</span>
+                    <span class="font-bold text-slate-800">${esc(c.name)}</span>
                     <span class="text-[11px] text-slate-400 block">วงเงิน: ฿${c.limit.toLocaleString('th-TH')} | ยอดรูดหนี้: ฿${c.balance.toLocaleString('th-TH')}</span>
                     <span class="text-[10px] text-slate-400 block">ตัดรอบวันที่ ${c.billingDay} | ดีลชำระวันที่ ${c.dueDay}</span>
                 </div>
@@ -2936,7 +3032,7 @@ function renderPromptPayQrPreview(dataUrl, source = 'profile') {
     const clearBtn = document.getElementById(ids.clearBtn);
     if (!preview || !clearBtn) return;
     if (dataUrl) {
-        preview.innerHTML = `<img src="${dataUrl}" class="w-full h-full object-cover">`;
+        preview.innerHTML = `<img src="${esc(dataUrl)}" class="w-full h-full object-cover">`;
         clearBtn.classList.remove('hidden');
     } else {
         preview.innerHTML = `<i class="fa-solid fa-qrcode text-slate-300 text-xl"></i>`;
@@ -3108,6 +3204,7 @@ window.clearAllNotifications = clearAllNotifications;
 window.saveBudgetSubmit = saveBudgetSubmit;
 window.deleteBudgetSubmit = deleteBudgetSubmit;
 window.exportTransactionsCSV = exportTransactionsCSV;
+window.exportFullBackup = exportFullBackup;
 window.setTransactionViewMode = setTransactionViewMode;
 window.setViewMode = setViewMode;
 window.getViewMode = getViewMode;
@@ -3133,3 +3230,9 @@ window.showCardDetail = showCardDetail;
 window.showRecurringDetail = showRecurringDetail;
 window.checkRegisterPasswordStrength = checkRegisterPasswordStrength;
 window.checkChangePasswordStrength = checkChangePasswordStrength;
+window.checkResetPasswordStrength = checkResetPasswordStrength;
+window.openForgotPasswordModal = openForgotPasswordModal;
+window.closeForgotPasswordModal = closeForgotPasswordModal;
+window.showForgotPasswordStep = showForgotPasswordStep;
+window.handleForgotPasswordSubmit = handleForgotPasswordSubmit;
+window.handleResetPasswordSubmit = handleResetPasswordSubmit;
