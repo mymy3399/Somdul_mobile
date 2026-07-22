@@ -194,7 +194,7 @@ function renderCategorySummary() {
     
     if (sortedCategories.length === 0) {
         container.innerHTML = `
-            <div class="text-center py-4 text-slate-400 text-[11px]">
+            <div class="text-center py-4 text-slate-400 text-xs">
                 ยังไม่มีรายจ่ายบันทึกในรอบนี้
             </div>
         `;
@@ -225,10 +225,10 @@ function renderCategorySummary() {
 
         const html = `
             <div class="space-y-1">
-                <div class="flex justify-between items-center text-[11px]">
+                <div class="flex justify-between items-center text-xs">
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full ${cat.color}"></span>
-                        <span class="font-bold text-slate-700"><i class="fa-solid ${cat.icon} mr-1 text-[10px] text-slate-400"></i> ${cat.name}</span>
+                        <span class="font-bold text-slate-700"><i class="fa-solid ${cat.icon} mr-1 text-[11px] text-slate-400"></i> ${cat.name}</span>
                     </div>
                     <div class="text-right">${rightLabel}</div>
                 </div>
@@ -254,7 +254,7 @@ function renderDashboardWallets() {
         const cardHTML = `
             <div class="bg-white rounded-2xl border border-slate-200/70 p-3 shadow-xs flex flex-col justify-between min-h-[75px] relative overflow-hidden">
                 <div class="flex justify-between items-start">
-                    <span class="text-[9px] text-slate-400 font-semibold uppercase truncate block w-[70%]">${w.name}</span>
+                    <span class="text-[10px] text-slate-400 font-semibold uppercase truncate block w-[70%]">${w.name}</span>
                     <i class="${iconClass} text-xs"></i>
                 </div>
                 <span class="font-bold text-slate-800 text-[13px] block mt-1.5">฿${w.balance.toLocaleString('th-TH', { maximumFractionDigits: 2 })}</span>
@@ -367,7 +367,7 @@ function renderTransactions() {
 
     const mode = getViewMode('transactions');
     listContainer.className = mode === 'card'
-        ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3"
+        ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
         : "bg-white rounded-2xl border border-slate-200/70 divide-y divide-slate-50 overflow-hidden shadow-sm";
 
     state.transactions.forEach((tx) => {
@@ -389,7 +389,7 @@ function renderTransactions() {
         }
 
         const txHTML = mode === 'card' ? `
-            <div onclick="showTransactionDetail('${tx.id}')" class="bg-white rounded-2xl border border-slate-200/70 shadow-sm p-4 cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all">
+            <div onclick="showTransactionDetail('${tx.id}')" class="bg-white rounded-2xl border border-slate-200/70 shadow-sm p-5 cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all">
                 <div class="flex items-start justify-between gap-2 mb-3">
                     <div class="w-10 h-10 ${iconBg} rounded-xl flex items-center justify-center shrink-0">
                         <i class="${iconClass} text-sm"></i>
@@ -397,24 +397,24 @@ function renderTransactions() {
                     <span class="font-bold ${amountColor} text-base">${amountSign}฿${tx.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
                 </div>
                 <h4 class="font-bold text-slate-800 text-sm mb-1">${tx.desc}</h4>
-                <div class="flex items-center justify-between text-[11px] text-slate-400">
+                <div class="flex items-center justify-between text-xs text-slate-400">
                     <span>${sourceName}</span>
                     ${cat ? `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-normal shrink-0">${cat.name}</span>` : ''}
                 </div>
-                <span class="text-[10px] text-slate-400 block mt-1.5 pt-1.5 border-t border-slate-100">${tx.date}</span>
+                <span class="text-[11px] text-slate-400 block mt-1.5 pt-1.5 border-t border-slate-100">${tx.date}</span>
             </div>
         ` : `
             <div onclick="showTransactionDetail('${tx.id}')" class="flex items-center justify-between p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 ${iconBg} rounded-lg flex items-center justify-center shrink-0">
-                        <i class="${iconClass} text-[11px]"></i>
+                        <i class="${iconClass} text-xs"></i>
                     </div>
                     <div>
                         <h4 class="font-bold text-slate-800 flex items-center gap-1.5">
                             ${tx.desc}
-                            ${cat ? `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-normal shrink-0">${cat.name}</span>` : ''}
+                            ${cat ? `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-normal shrink-0">${cat.name}</span>` : ''}
                         </h4>
-                        <span class="text-[10px] text-slate-400 block mt-0.5">ผ่าน: ${sourceName} | ${tx.date}</span>
+                        <span class="text-[11px] text-slate-400 block mt-0.5">ผ่าน: ${sourceName} | ${tx.date}</span>
                     </div>
                 </div>
                 <span class="font-bold ${amountColor} text-sm">${amountSign}฿${tx.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
@@ -441,7 +441,7 @@ function renderDebtors() {
     const mode = getViewMode('debtors');
     listContainer.className = mode === 'list'
         ? "bg-white rounded-2xl border border-slate-200/70 divide-y divide-slate-50 overflow-hidden shadow-sm"
-        : "space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-4";
+        : "space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3";
 
     const activeDebtors = state.debtors.filter(d => d.status !== "PAID" && d.remainingAmount > 0);
 
@@ -461,11 +461,11 @@ function renderDebtors() {
             const card = state.creditCards.find(c => c.id === debtor.cardId);
             typeText = 'ผ่อนแทนด้วยบัตรเครดิต';
             badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
-            badgeHTML = `<span class="text-[10px] px-2 py-0.5 rounded-full border ${badgeColor}"><i class="fa-regular fa-credit-card mr-0.5"></i> ${card ? card.name : 'บัตรเครดิต'}</span>`;
+            badgeHTML = `<span class="text-[11px] px-2 py-0.5 rounded-full border ${badgeColor}"><i class="fa-regular fa-credit-card mr-0.5"></i> ${card ? card.name : 'บัตรเครดิต'}</span>`;
         } else {
             typeText = 'ยืมเงินสดก้อนเดียว';
             badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
-            badgeHTML = `<span class="text-[10px] px-2 py-0.5 rounded-full border ${badgeColor}"><i class="fa-solid fa-money-bill-wave mr-0.5"></i> เงินสด</span>`;
+            badgeHTML = `<span class="text-[11px] px-2 py-0.5 rounded-full border ${badgeColor}"><i class="fa-solid fa-money-bill-wave mr-0.5"></i> เงินสด</span>`;
         }
 
         const dueLabel = debtor.dueDate ? `ครบกำหนด ${formatThaiDateOnly(debtor.dueDate)}` : `ดีลทุกวันที่ ${debtor.dueDay}`;
@@ -477,27 +477,27 @@ function renderDebtors() {
             <div onclick="showDebtorDetail('${debtor.id}')" class="flex items-center justify-between p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors gap-2">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="w-8 h-8 ${badgeColor.includes('blue') ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'} rounded-lg flex items-center justify-center shrink-0">
-                        <i class="fa-solid ${debtor.type === 'CREDIT_CARD_INSTALLMENT' ? 'fa-credit-card' : 'fa-money-bill-wave'} text-[11px]"></i>
+                        <i class="fa-solid ${debtor.type === 'CREDIT_CARD_INSTALLMENT' ? 'fa-credit-card' : 'fa-money-bill-wave'} text-xs"></i>
                     </div>
                     <div class="min-w-0">
                         <h4 class="font-bold text-slate-800 truncate">${debtor.name}</h4>
-                        <span class="text-[10px] text-slate-400 block mt-0.5 truncate">${installmentText}</span>
+                        <span class="text-[11px] text-slate-400 block mt-0.5 truncate">${installmentText}</span>
                     </div>
                 </div>
                 <div class="text-right shrink-0">
                     <span class="font-bold text-rose-500 text-sm block">฿${debtor.remainingAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
-                    <button onclick="event.stopPropagation(); openReceivePaybackModal('${debtor.id}')" class="text-emerald-600 text-[10px] font-semibold hover:underline">รับชำระคืน</button>
+                    <button onclick="event.stopPropagation(); openReceivePaybackModal('${debtor.id}')" class="text-emerald-600 text-[11px] font-semibold hover:underline">รับชำระคืน</button>
                 </div>
             </div>
         ` : `
-            <div onclick="showDebtorDetail('${debtor.id}')" class="bg-white rounded-2xl border border-slate-200/70 p-4 shadow-sm relative overflow-hidden cursor-pointer hover:border-emerald-200 transition-colors">
+            <div onclick="showDebtorDetail('${debtor.id}')" class="bg-white rounded-2xl border border-slate-200/70 p-5 shadow-sm relative overflow-hidden cursor-pointer hover:border-emerald-200 transition-colors">
                 <div class="flex justify-between items-start mb-2">
                     <div>
                         <h4 class="font-bold text-slate-800 text-sm">${debtor.name}</h4>
                         <p class="text-xs text-slate-400 mt-0.5 mb-1">${debtor.memo}</p>
                         <div class="flex flex-wrap gap-1 mt-1">
                             ${badgeHTML}
-                            <span class="text-[10px] text-slate-400 self-center">${installmentText}</span>
+                            <span class="text-[11px] text-slate-400 self-center">${installmentText}</span>
                         </div>
                     </div>
                     <div class="text-right">
@@ -512,10 +512,10 @@ function renderDebtors() {
                         <span class="font-semibold text-slate-700">฿${nextPaybackVal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div class="flex gap-1.5 flex-wrap ml-auto">
-                        <button onclick="event.stopPropagation(); openShareSlip('${debtor.id}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-2.5 py-1.5 rounded-lg text-[11px] transition-colors flex items-center gap-1 whitespace-nowrap shrink-0">
+                        <button onclick="event.stopPropagation(); openShareSlip('${debtor.id}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-1 whitespace-nowrap shrink-0">
                             <i class="fa-regular fa-paper-plane"></i> แชร์สลิปทวง
                         </button>
-                        <button onclick="event.stopPropagation(); openReceivePaybackModal('${debtor.id}')" class="bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] transition-colors flex items-center gap-1 whitespace-nowrap shrink-0">
+                        <button onclick="event.stopPropagation(); openReceivePaybackModal('${debtor.id}')" class="bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-1 whitespace-nowrap shrink-0">
                             <i class="fa-solid fa-check"></i> รับชำระคืน
                         </button>
                     </div>
@@ -545,7 +545,7 @@ function renderCreditCards() {
     const mode = getViewMode('cards');
     listContainer.className = mode === 'list'
         ? "bg-white rounded-2xl border border-slate-200/70 divide-y divide-slate-50 overflow-hidden shadow-sm"
-        : "space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-4";
+        : "space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3";
 
     state.creditCards.forEach((card) => {
         const availableLimit = card.limit - card.balance;
@@ -554,36 +554,36 @@ function renderCreditCards() {
         const itemHTML = mode === 'list' ? `
             <div onclick="showCardDetail('${card.id}')" class="flex items-center justify-between p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors gap-2">
                 <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-9 h-6 bg-slate-800 text-white text-[9px] font-bold rounded-md flex items-center justify-center border border-slate-700 shrink-0">
+                    <div class="w-9 h-6 bg-slate-800 text-white text-[10px] font-bold rounded-md flex items-center justify-center border border-slate-700 shrink-0">
                         CARD
                     </div>
                     <div class="min-w-0">
                         <h4 class="font-bold text-slate-800 truncate">${card.name}</h4>
-                        <span class="text-[10px] text-slate-400 block mt-0.5 truncate">ครบกำหนดวันที่ ${card.dueDay} | ว่างใช้ได้ ฿${availableLimit.toLocaleString('th-TH')}</span>
+                        <span class="text-[11px] text-slate-400 block mt-0.5 truncate">ครบกำหนดวันที่ ${card.dueDay} | ว่างใช้ได้ ฿${availableLimit.toLocaleString('th-TH')}</span>
                     </div>
                 </div>
                 <span class="font-bold text-slate-800 text-sm shrink-0">฿${card.balance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
             </div>
         ` : `
-            <div onclick="showCardDetail('${card.id}')" class="bg-white rounded-2xl border border-slate-200/70 p-4 shadow-sm relative overflow-hidden cursor-pointer hover:border-blue-200 transition-colors">
+            <div onclick="showCardDetail('${card.id}')" class="bg-white rounded-2xl border border-slate-200/70 p-5 shadow-sm relative overflow-hidden cursor-pointer hover:border-blue-200 transition-colors">
                 <div class="flex justify-between items-start mb-3">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-10 h-7 bg-slate-800 text-white text-[10px] font-bold rounded-md flex items-center justify-center border border-slate-700">
+                        <div class="w-10 h-7 bg-slate-800 text-white text-[11px] font-bold rounded-md flex items-center justify-center border border-slate-700">
                             CARD
                         </div>
                         <div>
                             <h4 class="font-bold text-slate-800 text-xs">${card.name}</h4>
-                            <span class="text-[10px] text-slate-400 block mt-0.5">ตัดรอบวันที่ ${card.billingDay} | ครบกำหนดจ่ายวันที่ ${card.dueDay} ของเดือน</span>
+                            <span class="text-[11px] text-slate-400 block mt-0.5">ตัดรอบวันที่ ${card.billingDay} | ครบกำหนดจ่ายวันที่ ${card.dueDay} ของเดือน</span>
                         </div>
                     </div>
                     <div class="text-right">
-                        <span class="text-[10px] text-slate-400 block">ยอดค้างชำระ</span>
+                        <span class="text-[11px] text-slate-400 block">ยอดค้างชำระ</span>
                         <span class="font-bold text-slate-800 text-sm">฿${card.balance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
                     </div>
                 </div>
 
                 <div class="space-y-1 text-xs">
-                    <div class="flex justify-between text-[10px] text-slate-400">
+                    <div class="flex justify-between text-[11px] text-slate-400">
                         <span>วงเงินรวม: ฿${card.limit.toLocaleString('th-TH')}</span>
                         <span>ว่างใช้ได้: ฿${availableLimit.toLocaleString('th-TH')}</span>
                     </div>
@@ -615,7 +615,7 @@ function renderRecurring() {
     const mode = getViewMode('recurring');
     listContainer.className = mode === 'list'
         ? "bg-white rounded-2xl border border-slate-200/70 divide-y divide-slate-50 overflow-hidden shadow-sm"
-        : "space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-4";
+        : "space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3";
 
     const unpaidRecurring = state.recurringPayments.filter(rec => rec.status === "WAITING");
     document.getElementById('recurringCount').innerText = `ค้างชำระประจำ ${unpaidRecurring.length} รายการ`;
@@ -623,41 +623,41 @@ function renderRecurring() {
     state.recurringPayments.forEach((rec) => {
         const isPaid = rec.status === "PAID";
         const statusBadge = isPaid
-            ? `<span class="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-emerald-100">จ่ายแล้วเดือนนี้</span>`
-            : `<span class="bg-amber-50 text-amber-700 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-amber-100">รอหักงวดถัดไป</span>`;
+            ? `<span class="bg-emerald-50 text-emerald-700 text-[11px] font-semibold px-2 py-0.5 rounded-md border border-emerald-100">จ่ายแล้วเดือนนี้</span>`
+            : `<span class="bg-amber-50 text-amber-700 text-[11px] font-semibold px-2 py-0.5 rounded-md border border-amber-100">รอหักงวดถัดไป</span>`;
 
         const itemHTML = mode === 'list' ? `
             <div onclick="showRecurringDetail('${rec.id}')" class="flex items-center justify-between p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors gap-2">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="w-8 h-8 ${isPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'} rounded-lg flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-rotate-right text-[11px]"></i>
+                        <i class="fa-solid fa-rotate-right text-xs"></i>
                     </div>
                     <div class="min-w-0">
                         <h4 class="font-bold text-slate-800 truncate">${rec.name}</h4>
-                        <span class="text-[10px] text-slate-400 block mt-0.5 truncate">ครบกำหนดวันที่ ${rec.dueDay} ของทุกเดือน</span>
+                        <span class="text-[11px] text-slate-400 block mt-0.5 truncate">ครบกำหนดวันที่ ${rec.dueDay} ของทุกเดือน</span>
                     </div>
                 </div>
                 <div class="text-right shrink-0">
                     <span class="font-bold text-slate-800 block text-sm">฿${rec.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
-                    ${!isPaid ? `<button onclick="event.stopPropagation(); openPayRecurringModal('${rec.id}')" class="text-emerald-600 text-[10px] font-semibold hover:underline">ยืนยันจ่าย</button>` : ''}
+                    ${!isPaid ? `<button onclick="event.stopPropagation(); openPayRecurringModal('${rec.id}')" class="text-emerald-600 text-[11px] font-semibold hover:underline">ยืนยันจ่าย</button>` : ''}
                 </div>
             </div>
         ` : `
-            <div onclick="showRecurringDetail('${rec.id}')" class="bg-white rounded-2xl border border-slate-200/70 p-4 shadow-sm relative overflow-hidden flex justify-between items-center cursor-pointer hover:border-amber-200 transition-colors">
+            <div onclick="showRecurringDetail('${rec.id}')" class="bg-white rounded-2xl border border-slate-200/70 p-5 shadow-sm relative overflow-hidden flex justify-between items-center cursor-pointer hover:border-amber-200 transition-colors">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 ${isPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'} rounded-xl flex items-center justify-center">
                         <i class="fa-solid fa-rotate-right text-sm"></i>
                     </div>
                     <div>
                         <h4 class="font-bold text-slate-800 text-xs">${rec.name}</h4>
-                        <span class="text-[10px] text-slate-400 block mt-0.5">ครบกำหนดวันที่ ${rec.dueDay} ของทุกเดือน</span>
+                        <span class="text-[11px] text-slate-400 block mt-0.5">ครบกำหนดวันที่ ${rec.dueDay} ของทุกเดือน</span>
                         <div class="mt-1">${statusBadge}</div>
                     </div>
                 </div>
                 <div class="text-right">
                     <span class="font-bold text-slate-800 block text-sm">฿${rec.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
                     ${!isPaid ? `
-                    <button onclick="event.stopPropagation(); openPayRecurringModal('${rec.id}')" class="bg-gradient-to-b from-slate-800 to-slate-950 hover:from-slate-900 hover:to-black text-white font-semibold text-[10px] px-2.5 py-1 rounded-md transition-colors mt-1">
+                    <button onclick="event.stopPropagation(); openPayRecurringModal('${rec.id}')" class="bg-gradient-to-b from-slate-800 to-slate-950 hover:from-slate-900 hover:to-black text-white font-semibold text-[11px] px-2.5 py-1 rounded-md transition-colors mt-1">
                         ยืนยันจ่าย
                     </button>` : ''}
                 </div>
@@ -686,7 +686,7 @@ function renderTimeline() {
     
     if (items.length === 0) {
         listContainer.innerHTML = `
-            <div class="w-full text-center py-4 text-slate-400 text-[11px] self-center">
+            <div class="w-full text-center py-4 text-slate-400 text-xs self-center">
                 <i class="fa-regular fa-calendar text-lg mb-1 block"></i>
                 ไม่มีรายการสภาพคล่องครบกำหนดใน 30 วันข้างหน้า
             </div>
@@ -706,7 +706,7 @@ function renderTimeline() {
             const sign = isIncome ? '+' : '-';
             
             eventsHTML += `
-                <div class="text-[9px] ${badgeClass} font-semibold py-0.5 px-1 rounded border truncate">
+                <div class="text-[10px] ${badgeClass} font-semibold py-0.5 px-1 rounded border truncate">
                     ${sign}฿${evt.amount.toLocaleString('th-TH')}
                 </div>
             `;
@@ -715,11 +715,11 @@ function renderTimeline() {
         
         const cardHTML = `
             <div class="flex-shrink-0 w-28 bg-slate-50 border border-slate-200/70 rounded-xl p-2.5 text-center flex flex-col justify-between min-h-[105px] shadow-2xs hover:bg-slate-100 transition-colors">
-                <div class="text-[10px] font-bold text-slate-500 uppercase border-b border-slate-200/40 pb-1 mb-1">${item.dateStr}</div>
+                <div class="text-[11px] font-bold text-slate-500 uppercase border-b border-slate-200/40 pb-1 mb-1">${item.dateStr}</div>
                 <div class="my-1 space-y-1">
                     ${eventsHTML}
                 </div>
-                <div class="text-[8px] text-slate-400 truncate mt-1" title="${namesText.join(', ')}">
+                <div class="text-[9px] text-slate-400 truncate mt-1" title="${namesText.join(', ')}">
                     ${item.events.map(e => e.name).join(' & ')}
                 </div>
             </div>
@@ -872,11 +872,11 @@ function renderNotifications() {
                         </div>
                         <div>
                             <span class="font-bold text-slate-800">ลูกหนี้ค้างชำระคืนเรา</span>
-                            <p class="text-slate-500 text-[11px] mt-0.5">${d.name} ต้องโอนคืนยอดงวดถัดไป ฿${nextPaybackVal.toLocaleString('th-TH')} (ดีลวันที่ ${d.dueDay})</p>
+                            <p class="text-slate-500 text-xs mt-0.5">${d.name} ต้องโอนคืนยอดงวดถัดไป ฿${nextPaybackVal.toLocaleString('th-TH')} (ดีลวันที่ ${d.dueDay})</p>
                         </div>
                     </div>
                     <button onclick="dismissNotification('${d.id}')" class="w-6 h-6 rounded-full bg-white hover:bg-slate-100 border border-slate-200/70 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="อ่านแล้ว">
-                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                        <i class="fa-solid fa-xmark text-[11px]"></i>
                     </button>
                 </div>
             `;
@@ -895,11 +895,11 @@ function renderNotifications() {
                         </div>
                         <div>
                             <span class="font-bold text-slate-800">บิลบัตรเครดิตรอจ่าย</span>
-                            <p class="text-slate-500 text-[11px] mt-0.5">บัตร ${c.name} มียอดค้างรอเคลียร์ ฿${c.balance.toLocaleString('th-TH')} (กำหนดชำระวันที่ ${c.dueDay})</p>
+                            <p class="text-slate-500 text-xs mt-0.5">บัตร ${c.name} มียอดค้างรอเคลียร์ ฿${c.balance.toLocaleString('th-TH')} (กำหนดชำระวันที่ ${c.dueDay})</p>
                         </div>
                     </div>
                     <button onclick="dismissNotification('${c.id}')" class="w-6 h-6 rounded-full bg-white hover:bg-slate-100 border border-slate-200/70 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="อ่านแล้ว">
-                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                        <i class="fa-solid fa-xmark text-[11px]"></i>
                     </button>
                 </div>
             `;
@@ -918,11 +918,11 @@ function renderNotifications() {
                         </div>
                         <div>
                             <span class="font-bold text-slate-800">ค่าบริการรายเดือน (Subscription)</span>
-                            <p class="text-slate-500 text-[11px] mt-0.5">รายการ ${r.name} ยอด ฿${r.amount.toLocaleString('th-TH')} (ดีลกำหนดจ่ายวันที่ ${r.dueDay})</p>
+                            <p class="text-slate-500 text-xs mt-0.5">รายการ ${r.name} ยอด ฿${r.amount.toLocaleString('th-TH')} (ดีลกำหนดจ่ายวันที่ ${r.dueDay})</p>
                         </div>
                     </div>
                     <button onclick="dismissNotification('${r.id}')" class="w-6 h-6 rounded-full bg-white hover:bg-slate-100 border border-slate-200/70 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="อ่านแล้ว">
-                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                        <i class="fa-solid fa-xmark text-[11px]"></i>
                     </button>
                 </div>
             `;
@@ -1064,7 +1064,7 @@ function checkRegisterPasswordStrength(val) {
     bar.className = `h-full transition-all duration-300 ${strength.color}`;
     bar.style.width = `${(strength.score / 4) * 100}%`;
     txt.innerText = `ระดับความปลอดภัย: ${strength.text}`;
-    txt.className = `text-[10px] ${strength.textClass}`;
+    txt.className = `text-[11px] ${strength.textClass}`;
 }
 
 function checkChangePasswordStrength(val) {
@@ -1078,7 +1078,7 @@ function checkChangePasswordStrength(val) {
     bar.className = `h-full transition-all duration-300 ${strength.color}`;
     bar.style.width = `${(strength.score / 4) * 100}%`;
     txt.innerText = `ระดับความปลอดภัย: ${strength.text}`;
-    txt.className = `text-[9px] ${strength.textClass}`;
+    txt.className = `text-[10px] ${strength.textClass}`;
 }
 
 function toggleRegisterMode(forceState) {
@@ -1808,7 +1808,7 @@ async function openEditDebtModal(debtId) {
             historyEl.innerHTML = history.map(h => `
                 <div class="bg-slate-50 rounded-lg p-2 border border-slate-200/70">
                     <p class="text-slate-700">${h.summary}</p>
-                    <span class="text-[10px] text-slate-400">${formatThaiDateOnly(h.changed_at)}</span>
+                    <span class="text-[11px] text-slate-400">${formatThaiDateOnly(h.changed_at)}</span>
                 </div>
             `).join('');
         }
@@ -1880,7 +1880,7 @@ function showTransactionDetail(txId) {
     const contentHTML = `
         <div class="space-y-3">
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
-                <span class="text-[10px] text-slate-400 block uppercase font-semibold">จำนวนเงิน</span>
+                <span class="text-[11px] text-slate-400 block uppercase font-semibold">จำนวนเงิน</span>
                 <span class="text-2xl font-bold ${typeColor}">${isExpense ? '-' : '+'}฿${tx.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
             </div>
             
@@ -1907,7 +1907,7 @@ function showTransactionDetail(txId) {
                 </div>
                 <div class="col-span-2">
                     <span class="text-slate-400 block">รหัสอ้างอิง:</span>
-                    <span class="font-mono text-slate-400 text-[10px]">${tx.id}</span>
+                    <span class="font-mono text-slate-400 text-[11px]">${tx.id}</span>
                 </div>
             </div>
         </div>
@@ -1992,9 +1992,9 @@ function showDebtorDetail(debtorId) {
     const contentHTML = `
         <div class="space-y-3">
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
-                <span class="text-[10px] text-slate-400 block uppercase font-semibold">${amountLabel}</span>
+                <span class="text-[11px] text-slate-400 block uppercase font-semibold">${amountLabel}</span>
                 <span class="text-2xl font-bold text-rose-500">฿${debtor.remainingAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
-                <span class="text-[10px] text-slate-400 block mt-0.5">${amountSubLabel}</span>
+                <span class="text-[11px] text-slate-400 block mt-0.5">${amountSubLabel}</span>
             </div>
             
             <div class="grid grid-cols-2 gap-y-3 gap-x-2 border-t border-slate-200/70 pt-3">
@@ -2038,7 +2038,7 @@ function showDebtorDetail(debtorId) {
                 </div>
                 <div>
                     <span class="text-slate-400 block">รหัสอ้างอิง:</span>
-                    <span class="font-mono text-slate-400 text-[10px]">${debtor.id}</span>
+                    <span class="font-mono text-slate-400 text-[11px]">${debtor.id}</span>
                 </div>
             </div>
         </div>
@@ -2111,7 +2111,7 @@ function showCardDetail(cardId) {
     if (linkedDebtors.length > 0) {
         linkedDebtors.forEach(d => {
             linkedHTML += `
-                <div class="flex justify-between items-center py-1 border-b border-slate-200/70 last:border-0 text-[11px]">
+                <div class="flex justify-between items-center py-1 border-b border-slate-200/70 last:border-0 text-xs">
                     <span class="text-slate-600 font-semibold">${d.name}</span>
                     <span class="text-slate-500 font-light truncate max-w-[150px]">(${d.memo})</span>
                     <span class="font-bold text-rose-500">฿${d.remainingAmount.toLocaleString('th-TH')}</span>
@@ -2119,15 +2119,15 @@ function showCardDetail(cardId) {
             `;
         });
     } else {
-        linkedHTML = `<span class="text-slate-400 text-[11px] block italic text-center py-1">ไม่มีหนี้เพื่อนผ่อนร่วมบนบัตรใบนี้</span>`;
+        linkedHTML = `<span class="text-slate-400 text-xs block italic text-center py-1">ไม่มีหนี้เพื่อนผ่อนร่วมบนบัตรใบนี้</span>`;
     }
     
     const contentHTML = `
         <div class="space-y-3">
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
-                <span class="text-[10px] text-slate-400 block uppercase font-semibold">ยอดหนี้รูดค้างชำระปัจจุบัน</span>
+                <span class="text-[11px] text-slate-400 block uppercase font-semibold">ยอดหนี้รูดค้างชำระปัจจุบัน</span>
                 <span class="text-2xl font-bold text-slate-800">฿${card.balance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
-                <span class="text-[10px] text-slate-400 block mt-0.5">วงเงินเต็มทั้งหมด: ฿${card.limit.toLocaleString('th-TH')}</span>
+                <span class="text-[11px] text-slate-400 block mt-0.5">วงเงินเต็มทั้งหมด: ฿${card.limit.toLocaleString('th-TH')}</span>
             </div>
             
             <div class="grid grid-cols-2 gap-y-3 gap-x-2 border-t border-slate-200/70 pt-3">
@@ -2150,7 +2150,7 @@ function showCardDetail(cardId) {
             </div>
             
             <div class="border-t border-slate-200/70 pt-3 space-y-1.5">
-                <span class="text-slate-400 block font-semibold text-[10px] uppercase">รายการเพื่อนผ่อนร่วมบัตรเครดิตใบนี้:</span>
+                <span class="text-slate-400 block font-semibold text-[11px] uppercase">รายการเพื่อนผ่อนร่วมบัตรเครดิตใบนี้:</span>
                 <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70">
                     ${linkedHTML}
                 </div>
@@ -2172,7 +2172,7 @@ function showRecurringDetail(recId) {
     const contentHTML = `
         <div class="space-y-3">
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
-                <span class="text-[10px] text-slate-400 block uppercase font-semibold">ค่าบริการรายเดือน</span>
+                <span class="text-[11px] text-slate-400 block uppercase font-semibold">ค่าบริการรายเดือน</span>
                 <span class="text-2xl font-bold text-amber-500">฿${rec.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
             </div>
             
@@ -2191,7 +2191,7 @@ function showRecurringDetail(recId) {
                 </div>
                 <div>
                     <span class="text-slate-400 block">รหัสอ้างอิง:</span>
-                    <span class="font-mono text-slate-400 text-[10px]">${rec.id}</span>
+                    <span class="font-mono text-slate-400 text-[11px]">${rec.id}</span>
                 </div>
             </div>
         </div>
@@ -2416,8 +2416,8 @@ function renderSettingsBudgets() {
         const itemHTML = `
             <div class="flex items-center justify-between gap-2 p-3 bg-white border border-slate-200/70 rounded-xl text-xs">
                 <div class="flex-1 min-w-0">
-                    <span class="font-bold text-slate-800"><i class="fa-solid ${cat.icon} mr-1 text-[10px] text-slate-400"></i> ${cat.name}</span>
-                    ${budget ? `<span class="text-[10px] ${overBudget ? 'text-rose-500 font-semibold' : 'text-slate-400'} block mt-0.5">ใช้ไปแล้ว ฿${spent.toLocaleString('th-TH', { minimumFractionDigits: 2 })} / ฿${budget.monthlyLimit.toLocaleString('th-TH')}${overBudget ? ' (เกินงบ!)' : ''}</span>` : `<span class="text-[10px] text-slate-400 block mt-0.5">ยังไม่ได้ตั้งงบ</span>`}
+                    <span class="font-bold text-slate-800"><i class="fa-solid ${cat.icon} mr-1 text-[11px] text-slate-400"></i> ${cat.name}</span>
+                    ${budget ? `<span class="text-[11px] ${overBudget ? 'text-rose-500 font-semibold' : 'text-slate-400'} block mt-0.5">ใช้ไปแล้ว ฿${spent.toLocaleString('th-TH', { minimumFractionDigits: 2 })} / ฿${budget.monthlyLimit.toLocaleString('th-TH')}${overBudget ? ' (เกินงบ!)' : ''}</span>` : `<span class="text-[11px] text-slate-400 block mt-0.5">ยังไม่ได้ตั้งงบ</span>`}
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
                     <input type="number" step="0.01" min="0" placeholder="งบ/เดือน" value="${budget ? budget.monthlyLimit : ''}" id="budgetInput-${catKey}" class="w-20 px-2 py-1.5 rounded-lg border border-slate-200 text-xs">
@@ -2554,7 +2554,7 @@ function renderSettingsCategories() {
                     <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${cat.color}/10 ${cat.textColor}"><i class="fa-solid ${cat.icon}"></i></span>
                     <div class="min-w-0">
                         <span class="font-bold text-slate-800 block truncate">${cat.name}</span>
-                        <span class="text-[10px] text-slate-400 block">${cat.txType === 'EXPENSE' ? 'รายจ่าย' : 'รายรับ'}</span>
+                        <span class="text-[11px] text-slate-400 block">${cat.txType === 'EXPENSE' ? 'รายจ่าย' : 'รายรับ'}</span>
                     </div>
                 </div>
                 <div class="flex gap-1 shrink-0">
@@ -2660,7 +2660,7 @@ function renderSettingsQuickTemplates() {
             <div class="flex items-center justify-between p-3 text-xs">
                 <div class="min-w-0">
                     <span class="font-bold text-slate-800 block truncate">${t.text}</span>
-                    <span class="text-[10px] text-slate-400 block truncate">${t.description}${cat ? ` · ${cat.name}` : ''}</span>
+                    <span class="text-[11px] text-slate-400 block truncate">${t.description}${cat ? ` · ${cat.name}` : ''}</span>
                 </div>
                 <div class="flex gap-1 shrink-0">
                     <button onclick="editQuickTemplate('${t.value}')" class="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -2686,7 +2686,7 @@ function renderSettingsWallets() {
             <div class="flex items-center justify-between p-3 text-xs">
                 <div>
                     <span class="font-bold text-slate-800">${w.name}</span>
-                    <span class="text-[10px] text-slate-400 block">${w.type} | ฿${w.balance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                    <span class="text-[11px] text-slate-400 block">${w.type} | ฿${w.balance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div class="flex gap-1">
                     <button onclick="editWallet('${w.id}')" class="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -2712,8 +2712,8 @@ function renderSettingsCards() {
             <div class="flex items-center justify-between p-3 text-xs">
                 <div>
                     <span class="font-bold text-slate-800">${c.name}</span>
-                    <span class="text-[10px] text-slate-400 block">วงเงิน: ฿${c.limit.toLocaleString('th-TH')} | ยอดรูดหนี้: ฿${c.balance.toLocaleString('th-TH')}</span>
-                    <span class="text-[9px] text-slate-400 block">ตัดรอบวันที่ ${c.billingDay} | ดีลชำระวันที่ ${c.dueDay}</span>
+                    <span class="text-[11px] text-slate-400 block">วงเงิน: ฿${c.limit.toLocaleString('th-TH')} | ยอดรูดหนี้: ฿${c.balance.toLocaleString('th-TH')}</span>
+                    <span class="text-[10px] text-slate-400 block">ตัดรอบวันที่ ${c.billingDay} | ดีลชำระวันที่ ${c.dueDay}</span>
                 </div>
                 <div class="flex gap-1">
                     <button onclick="editCard('${c.id}')" class="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"><i class="fa-solid fa-pen-to-square"></i></button>

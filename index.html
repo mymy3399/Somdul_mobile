@@ -152,7 +152,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-1.5">
-                <span id="offlineSyncBadge" class="hidden items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-700"></span>
+                <span id="offlineSyncBadge" class="hidden items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-700"></span>
                 <button onclick="openSettingsModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors" title="จัดการข้อมูล (กระเป๋าเงิน/บัตร/งบ/หมวดหมู่)">
                     <i class="fa-solid fa-gear"></i>
                 </button>
@@ -188,7 +188,7 @@
                         <span class="text-xs text-slate-300 font-light tracking-wide uppercase">ยอดเงินใช้ได้จริงคงเหลือ (Safe-to-Spend)</span>
                         <h2 class="text-3xl font-bold mt-1 text-emerald-400 tracking-tight num-tabular" id="displaySafeToSpend">฿0.00</h2>
                     </div>
-                    <span class="bg-white/10 backdrop-blur-sm text-emerald-300 text-[10px] font-medium px-2.5 py-1 rounded-full border border-emerald-500/30">
+                    <span class="bg-white/10 backdrop-blur-sm text-emerald-300 text-[11px] font-medium px-2.5 py-1 rounded-full border border-emerald-500/30">
                         <i class="fa-solid fa-shield-halved mr-1"></i> ประเมินแล้วปลอดภัย
                     </span>
                 </div>
@@ -232,7 +232,7 @@
             <section class="bg-slate-50/50 rounded-3xl p-1.5 border border-slate-200/50">
                 <div class="flex justify-between items-center px-2 py-1 mb-1.5">
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-wallet mr-1 text-emerald-500"></i> บัญชีและกระเป๋าเงิน</h3>
-                    <button onclick="openSettingsModal()" class="text-[11px] text-emerald-500 hover:underline"><i class="fa-solid fa-plus mr-0.5"></i>จัดการ</button>
+                    <button onclick="openSettingsModal()" class="text-xs text-emerald-500 hover:underline"><i class="fa-solid fa-plus mr-0.5"></i>จัดการ</button>
                 </div>
                 <div id="dashboardWalletList" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                     <!-- Dynamically Inserted Wallets -->
@@ -266,7 +266,7 @@
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide">
                         <i class="fa-solid fa-chart-pie mr-1.5 text-emerald-500"></i> สรุปรายจ่ายตามหมวดหมู่
                     </h3>
-                    <span class="text-[10px] text-slate-400 font-medium" id="categorySummaryCycle">รอบบัญชีปัจจุบัน</span>
+                    <span class="text-[11px] text-slate-400 font-medium" id="categorySummaryCycle">รอบบัญชีปัจจุบัน</span>
                 </div>
                 <div id="categorySummaryContainer" class="space-y-2">
                     <!-- Dynamically populated progress bars of categories -->
@@ -281,7 +281,7 @@
             <div class="bg-white rounded-2xl border border-slate-200/70 p-4 shadow-sm space-y-3">
                 <div class="flex justify-between items-center border-b border-slate-50 pb-2">
                     <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wide"><i class="fa-regular fa-calendar-days text-emerald-500 mr-1.5"></i> ไทม์ไลน์สภาพคล่อง 30 วันข้างหน้า</h4>
-                    <span class="text-[10px] text-slate-400 font-medium">เข้า (เขียว) / ออก (แดง)</span>
+                    <span class="text-[11px] text-slate-400 font-medium">เข้า (เขียว) / ออก (แดง)</span>
                 </div>
                 <div id="timelineTrackerContainer" class="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
                     <!-- Dynamically Inserted horizontal scroll timeline items -->
@@ -309,7 +309,7 @@
             </div>
 
             <!-- Debtor List Grid -->
-            <div id="debtorList" class="space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-4">
+            <div id="debtorList" class="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3">
                 <!-- Dynamically Inserted -->
             </div>
         </div>
@@ -333,7 +333,7 @@
                 </div>
             </div>
 
-            <div id="creditCardList" class="space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-4">
+            <div id="creditCardList" class="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3">
                 <!-- Dynamically Inserted -->
             </div>
         </div>
@@ -355,7 +355,7 @@
                 </div>
             </div>
 
-            <div id="recurringList" class="space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-4">
+            <div id="recurringList" class="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3">
                 <!-- Dynamically Inserted -->
             </div>
         </div>
@@ -416,27 +416,27 @@
 
             <button onclick="switchMainTab('home')" id="bottomTab-home" class="flex flex-col items-center gap-1 text-emerald-600 bg-emerald-50 rounded-xl px-3 py-1.5 transition-all lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:px-3.5 lg:py-2.5">
                 <i class="fa-solid fa-house text-lg lg:w-5 lg:text-center"></i>
-                <span class="text-[9px] font-bold lg:text-xs lg:font-semibold">หน้าหลัก</span>
+                <span class="text-[10px] font-bold lg:text-xs lg:font-semibold">หน้าหลัก</span>
             </button>
             <button onclick="switchMainTab('debtors')" id="bottomTab-debtors" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 rounded-xl px-3 py-1.5 transition-all lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:px-3.5 lg:py-2.5">
                 <i class="fa-solid fa-users-gear text-lg lg:w-5 lg:text-center"></i>
-                <span class="text-[9px] font-bold lg:text-xs lg:font-semibold">ลูกหนี้</span>
+                <span class="text-[10px] font-bold lg:text-xs lg:font-semibold">ลูกหนี้</span>
             </button>
             <button onclick="switchMainTab('cards')" id="bottomTab-cards" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 rounded-xl px-3 py-1.5 transition-all lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:px-3.5 lg:py-2.5">
                 <i class="fa-solid fa-credit-card text-lg lg:w-5 lg:text-center"></i>
-                <span class="text-[9px] font-bold lg:text-xs lg:font-semibold">บัตรเครดิต</span>
+                <span class="text-[10px] font-bold lg:text-xs lg:font-semibold">บัตรเครดิต</span>
             </button>
             <button onclick="switchMainTab('recurring')" id="bottomTab-recurring" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 rounded-xl px-3 py-1.5 transition-all lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:px-3.5 lg:py-2.5">
                 <i class="fa-solid fa-clock-rotate-left text-lg lg:w-5 lg:text-center"></i>
-                <span class="text-[9px] font-bold lg:text-xs lg:font-semibold">รายเดือน</span>
+                <span class="text-[10px] font-bold lg:text-xs lg:font-semibold">รายเดือน</span>
             </button>
             <button onclick="switchMainTab('history')" id="bottomTab-history" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 rounded-xl px-3 py-1.5 transition-all lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:px-3.5 lg:py-2.5">
                 <i class="fa-solid fa-receipt text-lg lg:w-5 lg:text-center"></i>
-                <span class="text-[9px] font-bold lg:text-xs lg:font-semibold">ประวัติ</span>
+                <span class="text-[10px] font-bold lg:text-xs lg:font-semibold">ประวัติ</span>
             </button>
             <button onclick="openSettingsModal()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 rounded-xl px-3 py-1.5 transition-all lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:px-3.5 lg:py-2.5 lg:mt-2 lg:border-t lg:border-slate-100 lg:pt-4">
                 <i class="fa-solid fa-gear text-lg lg:w-5 lg:text-center"></i>
-                <span class="text-[9px] font-bold lg:text-xs lg:font-semibold">ตั้งค่า</span>
+                <span class="text-[10px] font-bold lg:text-xs lg:font-semibold">ตั้งค่า</span>
             </button>
         </div>
     </nav>
@@ -469,7 +469,7 @@
                         <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex">
                             <div id="strengthBar" class="h-full transition-all duration-300 w-0 bg-rose-500"></div>
                         </div>
-                        <span id="strengthText" class="text-[10px] text-slate-400">ระดับความปลอดภัย: แย่มาก (ต้องการความยาว 6 ตัว ขึ้นไป ตัวเลข และสัญลักษณ์)</span>
+                        <span id="strengthText" class="text-[11px] text-slate-400">ระดับความปลอดภัย: แย่มาก (ต้องการความยาว 6 ตัว ขึ้นไป ตัวเลข และสัญลักษณ์)</span>
                     </div>
                 </div>
 
@@ -561,7 +561,7 @@
                 <div id="debtSplitNamesWrapper" class="hidden">
                     <label class="block text-xs font-semibold text-slate-500 mb-1">รายชื่อคนที่ร่วมแชร์บิล (ขึ้นบรรทัดใหม่ทีละคน)</label>
                     <textarea id="debtSplitNames" rows="3" placeholder="เพื่อนบอย&#10;เอส&#10;น้องบิว" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm"></textarea>
-                    <p class="text-[10px] text-slate-400 mt-1">ยอดรวมด้านล่างจะถูกหารเท่าๆ กันให้แต่ละคนโดยอัตโนมัติ</p>
+                    <p class="text-[11px] text-slate-400 mt-1">ยอดรวมด้านล่างจะถูกหารเท่าๆ กันให้แต่ละคนโดยอัตโนมัติ</p>
                 </div>
 
                 <div>
@@ -732,7 +732,7 @@
             
             <div class="text-center mb-4">
                 <span class="bg-indigo-50 text-indigo-600 text-xs font-semibold px-3 py-1 rounded-full"><i class="fa-regular fa-paper-plane mr-1"></i> แชร์สรุปยอดพาร์ตเนอร์</span>
-                <p class="text-[11px] text-slate-400 mt-1">คัดลอกคำทวงหรือดาวน์โหลดรูปภาพเพื่อส่งใน Line ได้อย่างน่ารักและเป็นสุภาพชน</p>
+                <p class="text-xs text-slate-400 mt-1">คัดลอกคำทวงหรือดาวน์โหลดรูปภาพเพื่อส่งใน Line ได้อย่างน่ารักและเป็นสุภาพชน</p>
             </div>
 
             <!-- THE SLIP TO BE TAKEN / SHARED -->
@@ -748,41 +748,41 @@
                     </div>
                     <div>
                         <h4 class="text-xs font-bold text-slate-800">Somdul Card</h4>
-                        <span class="text-[9px] text-slate-400">บันทึกช่วยเตือนความจำ</span>
+                        <span class="text-[10px] text-slate-400">บันทึกช่วยเตือนความจำ</span>
                     </div>
                 </div>
 
                 <div class="space-y-3 text-xs text-slate-700">
                     <div>
-                        <span class="text-[10px] text-slate-400 block">ถึงคุณพาร์ทเนอร์คนสำคัญ:</span>
+                        <span class="text-[11px] text-slate-400 block">ถึงคุณพาร์ทเนอร์คนสำคัญ:</span>
                         <span class="font-bold text-slate-800 text-sm" id="slipDebtorName">เพื่อนบอย</span>
                     </div>
                     
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <span class="text-[10px] text-slate-400 block">ประเภทรายการ:</span>
+                            <span class="text-[11px] text-slate-400 block">ประเภทรายการ:</span>
                             <span class="font-semibold text-slate-700" id="slipDebtType">ผ่อนสินค้าผ่านบัตร</span>
                         </div>
                         <div>
-                            <span class="text-[10px] text-slate-400 block">รายการอ้างอิง:</span>
+                            <span class="text-[11px] text-slate-400 block">รายการอ้างอิง:</span>
                             <span class="font-semibold text-slate-700" id="slipDebtMemo">ค่า iPad Air</span>
                         </div>
                     </div>
 
                     <div class="bg-white rounded-xl p-3 border border-slate-200/70 text-center my-2">
-                        <span class="text-[9px] text-slate-400 block uppercase font-semibold">ยอดโอนที่สะดวกคืนรอบนี้</span>
+                        <span class="text-[10px] text-slate-400 block uppercase font-semibold">ยอดโอนที่สะดวกคืนรอบนี้</span>
                         <span class="text-2xl font-bold text-emerald-600" id="slipAmountToPay">฿1,500.00</span>
-                        <span class="text-[10px] text-slate-400 block mt-0.5" id="slipInstallmentProgress">งวดที่ 2 / 10 งวด</span>
+                        <span class="text-[11px] text-slate-400 block mt-0.5" id="slipInstallmentProgress">งวดที่ 2 / 10 งวด</span>
                     </div>
 
                     <!-- PromptPay QR + account (only shown if the user has set these up in Settings) -->
                     <div id="slipPromptPaySection" class="bg-white rounded-xl p-3 border border-slate-200/70 text-center hidden">
-                        <span class="text-[9px] text-slate-400 block uppercase font-semibold mb-1.5">สแกนจ่ายผ่านพร้อมเพย์</span>
+                        <span class="text-[10px] text-slate-400 block uppercase font-semibold mb-1.5">สแกนจ่ายผ่านพร้อมเพย์</span>
                         <img id="slipPromptPayQr" src="" alt="PromptPay QR" class="w-28 h-28 mx-auto rounded-lg border border-slate-100 object-contain hidden">
                         <span id="slipPromptPayAccount" class="text-xs font-semibold text-slate-700 block mt-1.5"></span>
                     </div>
 
-                    <div class="text-[10px] text-slate-400 text-center italic border-t border-slate-200/60 pt-2.5">
+                    <div class="text-[11px] text-slate-400 text-center italic border-t border-slate-200/60 pt-2.5">
                         "ขอบคุณนะที่ช่วยแบ่งเบายอดกัน รักษาความสมดุลทางการเงินของพวกเรา ❤️"
                     </div>
                 </div>
@@ -798,7 +798,7 @@
                 </button>
             </div>
             
-            <p id="shareStatusMsg" class="text-center text-[10px] text-emerald-600 font-medium mt-2 opacity-0 transition-opacity duration-300">คัดลอกข้อความทวงอย่างเป็นทางการไปยังคลิปบอร์ดแล้ว!</p>
+            <p id="shareStatusMsg" class="text-center text-[11px] text-emerald-600 font-medium mt-2 opacity-0 transition-opacity duration-300">คัดลอกข้อความทวงอย่างเป็นทางการไปยังคลิปบอร์ดแล้ว!</p>
         </div>
     </div>
 
@@ -912,17 +912,17 @@
                     </div>
                     
                     <!-- Add/Edit Wallet Form -->
-                    <div id="walletFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                    <div id="walletFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3.5">
                         <h4 id="walletFormTitle" class="font-bold text-slate-800">เพิ่มกระเป๋าเงินใหม่</h4>
                         <input type="hidden" id="editWalletId">
                         <div class="space-y-2">
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">ชื่อกระเป๋าเงิน / บัญชี</label>
+                                <label class="block text-[11px] text-slate-500 mb-0.5">ชื่อกระเป๋าเงิน / บัญชี</label>
                                 <input type="text" id="setWalletName" placeholder="เช่น บัญชีเงินฝาก SCB" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">ประเภทกระเป๋า</label>
+                                    <label class="block text-[11px] text-slate-500 mb-0.5">ประเภทกระเป๋า</label>
                                     <select id="setWalletType" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                         <option value="CASH">CASH (เงินสด)</option>
                                         <option value="BANK">BANK (ธนาคาร)</option>
@@ -930,7 +930,7 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">ยอดเงินคงเหลือ</label>
+                                    <label class="block text-[11px] text-slate-500 mb-0.5">ยอดเงินคงเหลือ</label>
                                     <input type="number" step="0.01" id="setWalletBalance" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                 </div>
                             </div>
@@ -946,23 +946,23 @@
                     </div>
 
                     <!-- PromptPay shortcut — same saved value as the Account modal's Profile tab -->
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3.5">
                         <h4 class="font-bold text-slate-800"><i class="fa-solid fa-qrcode mr-1 text-indigo-500"></i> ตั้งค่าพร้อมเพย์สำหรับรับชำระ</h4>
-                        <p class="text-[11px] text-slate-500 leading-normal">ข้อมูลนี้จะแสดงในสลิปทวงหนี้ที่แชร์ให้เพื่อน เพื่อให้โอนเงินคืนได้สะดวกขึ้น</p>
+                        <p class="text-xs text-slate-500 leading-normal">ข้อมูลนี้จะแสดงในสลิปทวงหนี้ที่แชร์ให้เพื่อน เพื่อให้โอนเงินคืนได้สะดวกขึ้น</p>
                         <div class="space-y-2">
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">เบอร์โทร/เลขบัตรประชาชนพร้อมเพย์</label>
+                                <label class="block text-[11px] text-slate-500 mb-0.5">เบอร์โทร/เลขบัตรประชาชนพร้อมเพย์</label>
                                 <input type="text" id="setWalletPromptPayAccount" placeholder="เช่น 081-234-5678" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500">
                             </div>
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">รูป QR พร้อมเพย์ (อัปโหลดจากแอปธนาคาร)</label>
+                                <label class="block text-[11px] text-slate-500 mb-0.5">รูป QR พร้อมเพย์ (อัปโหลดจากแอปธนาคาร)</label>
                                 <div class="flex items-center gap-3">
                                     <div id="walletPromptPayQrPreview" class="w-16 h-16 rounded-lg border border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0">
                                         <i class="fa-solid fa-qrcode text-slate-300 text-xl"></i>
                                     </div>
                                     <div class="flex-1 space-y-1 min-w-0">
-                                        <input type="file" accept="image/*" id="setWalletPromptPayQrFile" onchange="handlePromptPayQrSelect(event, 'wallet')" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                                        <button type="button" onclick="clearPromptPayQr('wallet')" id="clearWalletPromptPayQrBtn" class="hidden text-[10px] text-rose-500 hover:underline">ลบรูป QR</button>
+                                        <input type="file" accept="image/*" id="setWalletPromptPayQrFile" onchange="handlePromptPayQrSelect(event, 'wallet')" class="w-full text-[11px] text-slate-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                        <button type="button" onclick="clearPromptPayQr('wallet')" id="clearWalletPromptPayQrBtn" class="hidden text-[11px] text-rose-500 hover:underline">ลบรูป QR</button>
                                     </div>
                                 </div>
                             </div>
@@ -981,31 +981,31 @@
                     </div>
                     
                     <!-- Add/Edit Card Form -->
-                    <div id="cardFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                    <div id="cardFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3.5">
                         <h4 id="cardFormTitle" class="font-bold text-slate-800">เพิ่มบัตรเครดิตใหม่</h4>
                         <input type="hidden" id="editCardId">
                         <div class="space-y-2">
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">ชื่อบัตรเครดิต</label>
+                                <label class="block text-[11px] text-slate-500 mb-0.5">ชื่อบัตรเครดิต</label>
                                 <input type="text" id="setCardName" placeholder="เช่น KTC Platinum" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">วงเงินบัตร</label>
+                                    <label class="block text-[11px] text-slate-500 mb-0.5">วงเงินบัตร</label>
                                     <input type="number" step="0.01" id="setCardLimit" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">ยอดหนี้รอชำระปัจจุบัน</label>
+                                    <label class="block text-[11px] text-slate-500 mb-0.5">ยอดหนี้รอชำระปัจจุบัน</label>
                                     <input type="number" step="0.01" id="setCardBalance" value="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">วันตัดรอบบิล (1-31)</label>
+                                    <label class="block text-[11px] text-slate-500 mb-0.5">วันตัดรอบบิล (1-31)</label>
                                     <input type="number" min="1" max="31" id="setCardBillingDay" placeholder="10" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">วันกำหนดชำระจริง (1-31)</label>
+                                    <label class="block text-[11px] text-slate-500 mb-0.5">วันกำหนดชำระจริง (1-31)</label>
                                     <input type="number" min="1" max="31" id="setCardDueDay" placeholder="25" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                 </div>
                             </div>
@@ -1024,7 +1024,7 @@
                 <!-- BUDGET SETTINGS -->
                 <div id="setTab-budgets" class="space-y-3 hidden">
                     <span class="font-bold text-slate-700 block">ตั้งงบประมาณรายเดือนต่อหมวดหมู่</span>
-                    <p class="text-[11px] text-slate-500 leading-normal">กำหนดวงเงินที่ตั้งใจจะใช้จ่ายต่อเดือนในแต่ละหมวดหมู่ ระบบจะขึ้นแถบสีแดงเตือนในหน้าหลักเมื่อใช้จ่ายเกินงบ</p>
+                    <p class="text-xs text-slate-500 leading-normal">กำหนดวงเงินที่ตั้งใจจะใช้จ่ายต่อเดือนในแต่ละหมวดหมู่ ระบบจะขึ้นแถบสีแดงเตือนในหน้าหลักเมื่อใช้จ่ายเกินงบ</p>
                     <div id="settingsBudgetList" class="space-y-2">
                         <!-- Dynamically Loaded -->
                     </div>
@@ -1039,16 +1039,16 @@
                             <button onclick="showAddCategoryForm()" class="bg-emerald-500 text-white px-2.5 py-1 rounded-lg hover:bg-emerald-600 transition-colors"><i class="fa-solid fa-plus mr-1"></i>เพิ่มหมวดหมู่</button>
                         </div>
 
-                        <div id="categoryFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                        <div id="categoryFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3.5">
                             <h4 id="categoryFormTitle" class="font-bold text-slate-800">เพิ่มหมวดหมู่ใหม่</h4>
                             <input type="hidden" id="editCategoryId">
                             <div class="space-y-2">
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">ชื่อหมวดหมู่</label>
+                                    <label class="block text-[11px] text-slate-500 mb-0.5">ชื่อหมวดหมู่</label>
                                     <input type="text" id="setCategoryName" placeholder="เช่น เลี้ยงแมว, ค่าเทอมลูก" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">ประเภท</label>
+                                    <label class="block text-[11px] text-slate-500 mb-0.5">ประเภท</label>
                                     <select id="setCategoryType" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                         <option value="EXPENSE">รายจ่าย</option>
                                         <option value="INCOME">รายรับ</option>
@@ -1056,7 +1056,7 @@
                                 </div>
                                 <div class="grid grid-cols-2 gap-2 items-end">
                                     <div>
-                                        <label class="block text-[10px] text-slate-500 mb-0.5">ไอคอน</label>
+                                        <label class="block text-[11px] text-slate-500 mb-0.5">ไอคอน</label>
                                         <select id="setCategoryIcon" onchange="updateCategoryPreview()" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                             <option value="fa-tag">ป้ายกำกับ</option>
                                             <option value="fa-utensils">อาหาร</option>
@@ -1086,7 +1086,7 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-[10px] text-slate-500 mb-0.5">สี</label>
+                                        <label class="block text-[11px] text-slate-500 mb-0.5">สี</label>
                                         <select id="setCategoryColor" onchange="updateCategoryPreview()" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                             <option value="emerald">เขียวมรกต</option>
                                             <option value="amber">เหลืองอำพัน</option>
@@ -1107,7 +1107,7 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2 pt-1">
-                                    <span class="text-[10px] text-slate-400">ตัวอย่าง:</span>
+                                    <span class="text-[11px] text-slate-400">ตัวอย่าง:</span>
                                     <span id="categoryPreviewIcon" class="w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-500/10 text-emerald-600"><i class="fa-solid fa-tag text-xs"></i></span>
                                 </div>
                             </div>
@@ -1128,22 +1128,22 @@
                             <span class="font-bold text-slate-700">รายการลัด (Quick Select)</span>
                             <button onclick="showAddQuickTemplateForm()" class="bg-emerald-500 text-white px-2.5 py-1 rounded-lg hover:bg-emerald-600 transition-colors"><i class="fa-solid fa-plus mr-1"></i>เพิ่มรายการลัด</button>
                         </div>
-                        <p class="text-[11px] text-slate-500 leading-normal">รายการลัดจะขึ้นในเมนู "เลือกรายการด่วน" ตอนจดบันทึกรายรับ/รายจ่าย เพื่อกรอกคำอธิบายและหมวดหมู่ให้อัตโนมัติ</p>
+                        <p class="text-xs text-slate-500 leading-normal">รายการลัดจะขึ้นในเมนู "เลือกรายการด่วน" ตอนจดบันทึกรายรับ/รายจ่าย เพื่อกรอกคำอธิบายและหมวดหมู่ให้อัตโนมัติ</p>
 
-                        <div id="quickTemplateFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                        <div id="quickTemplateFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3.5">
                             <h4 id="quickTemplateFormTitle" class="font-bold text-slate-800">เพิ่มรายการลัดใหม่</h4>
                             <input type="hidden" id="editQuickTemplateId">
                             <div class="space-y-2">
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">ป้ายชื่อในเมนู (ใส่อีโมจิได้)</label>
+                                    <label class="block text-[11px] text-slate-500 mb-0.5">ป้ายชื่อในเมนู (ใส่อีโมจิได้)</label>
                                     <input type="text" id="setTemplateLabel" placeholder="เช่น 🐱 ซื้ออาหารแมว" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">คำอธิบายที่จะกรอกอัตโนมัติ</label>
+                                    <label class="block text-[11px] text-slate-500 mb-0.5">คำอธิบายที่จะกรอกอัตโนมัติ</label>
                                     <input type="text" id="setTemplateDescription" placeholder="เช่น ค่าอาหารแมวรายเดือน" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">หมวดหมู่ที่จะเลือกให้อัตโนมัติ</label>
+                                    <label class="block text-[11px] text-slate-500 mb-0.5">หมวดหมู่ที่จะเลือกให้อัตโนมัติ</label>
                                     <select id="setTemplateCategory" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
                                         <!-- Dynamically populated from CATEGORIES -->
                                     </select>
@@ -1186,9 +1186,9 @@
             <div class="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 text-xs">
                 <!-- SYSTEM SETTINGS -->
                 <div id="setTab-system" class="space-y-4 hidden py-2">
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3.5">
                         <h4 class="font-bold text-slate-800"><i class="fa-solid fa-text-height mr-1 text-slate-600"></i> ขนาดตัวอักษร</h4>
-                        <p class="text-[11px] text-slate-500 leading-normal">ปรับขนาดตัวอักษรและองค์ประกอบทั้งแอปให้อ่านง่ายขึ้น การตั้งค่านี้จะถูกจดจำไว้ในเครื่องนี้</p>
+                        <p class="text-xs text-slate-500 leading-normal">ปรับขนาดตัวอักษรและองค์ประกอบทั้งแอปให้อ่านง่ายขึ้น การตั้งค่านี้จะถูกจดจำไว้ในเครื่องนี้</p>
                         <div id="fontSizePicker" class="grid grid-cols-4 gap-2">
                             <button onclick="setFontSize(87.5)" data-font-scale="87.5" class="py-2 rounded-lg border border-slate-200 text-center transition-colors">
                                 <span class="block text-xs font-bold">เล็ก</span>
@@ -1205,9 +1205,9 @@
                         </div>
                     </div>
 
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3.5">
                         <h4 class="font-bold text-slate-800"><i class="fa-solid fa-server mr-1 text-slate-600"></i> จัดการระบบการเชื่อมต่อ</h4>
-                        <p class="text-[11px] text-slate-500 leading-normal">จัดการเซสชันการเข้าใช้งานบัญชีของคุณจากส่วนนี้</p>
+                        <p class="text-xs text-slate-500 leading-normal">จัดการเซสชันการเข้าใช้งานบัญชีของคุณจากส่วนนี้</p>
 
                         <div class="space-y-2 pt-2">
                             <button onclick="handleLogout()" class="w-full bg-rose-500 text-white hover:bg-rose-600 py-2.5 rounded-xl font-bold transition-colors flex items-center justify-center gap-1.5">
@@ -1220,15 +1220,15 @@
                 <!-- USER PROFILE SETTINGS -->
                 <div id="setTab-profile" class="space-y-4 hidden py-2">
                     <!-- Update Profile Section -->
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3.5">
                         <h4 class="font-bold text-slate-800"><i class="fa-solid fa-user-gear mr-1 text-emerald-500"></i> แก้ไขข้อมูลส่วนตัว</h4>
                         <div class="space-y-2">
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">ชื่อโปรไฟล์</label>
+                                <label class="block text-[11px] text-slate-500 mb-0.5">ชื่อโปรไฟล์</label>
                                 <input type="text" id="setProfileName" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500">
                             </div>
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">อีเมล</label>
+                                <label class="block text-[11px] text-slate-500 mb-0.5">อีเมล</label>
                                 <input type="email" id="setProfileEmail" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500">
                             </div>
                         </div>
@@ -1238,23 +1238,23 @@
                     </div>
 
                     <!-- PromptPay Setup Section -->
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3.5">
                         <h4 class="font-bold text-slate-800"><i class="fa-solid fa-qrcode mr-1 text-indigo-500"></i> ตั้งค่าพร้อมเพย์สำหรับรับชำระ</h4>
-                        <p class="text-[11px] text-slate-500 leading-normal">ข้อมูลนี้จะแสดงในสลิปทวงหนี้ที่แชร์ให้เพื่อน เพื่อให้โอนเงินคืนได้สะดวกขึ้น (แก้ไขได้จากที่นี่ หรือจากแท็บ "กระเป๋าเงิน" ในหน้าตั้งค่าก็ได้)</p>
+                        <p class="text-xs text-slate-500 leading-normal">ข้อมูลนี้จะแสดงในสลิปทวงหนี้ที่แชร์ให้เพื่อน เพื่อให้โอนเงินคืนได้สะดวกขึ้น (แก้ไขได้จากที่นี่ หรือจากแท็บ "กระเป๋าเงิน" ในหน้าตั้งค่าก็ได้)</p>
                         <div class="space-y-2">
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">เบอร์โทร/เลขบัตรประชาชนพร้อมเพย์</label>
+                                <label class="block text-[11px] text-slate-500 mb-0.5">เบอร์โทร/เลขบัตรประชาชนพร้อมเพย์</label>
                                 <input type="text" id="setPromptPayAccount" placeholder="เช่น 081-234-5678" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500">
                             </div>
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">รูป QR พร้อมเพย์ (อัปโหลดจากแอปธนาคาร)</label>
+                                <label class="block text-[11px] text-slate-500 mb-0.5">รูป QR พร้อมเพย์ (อัปโหลดจากแอปธนาคาร)</label>
                                 <div class="flex items-center gap-3">
                                     <div id="promptPayQrPreview" class="w-16 h-16 rounded-lg border border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0">
                                         <i class="fa-solid fa-qrcode text-slate-300 text-xl"></i>
                                     </div>
                                     <div class="flex-1 space-y-1 min-w-0">
-                                        <input type="file" accept="image/*" id="setPromptPayQrFile" onchange="handlePromptPayQrSelect(event, 'profile')" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                                        <button type="button" onclick="clearPromptPayQr('profile')" id="clearPromptPayQrBtn" class="hidden text-[10px] text-rose-500 hover:underline">ลบรูป QR</button>
+                                        <input type="file" accept="image/*" id="setPromptPayQrFile" onchange="handlePromptPayQrSelect(event, 'profile')" class="w-full text-[11px] text-slate-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                        <button type="button" onclick="clearPromptPayQr('profile')" id="clearPromptPayQrBtn" class="hidden text-[11px] text-rose-500 hover:underline">ลบรูป QR</button>
                                     </div>
                                 </div>
                             </div>
@@ -1265,25 +1265,25 @@
                     </div>
 
                     <!-- Change Password Section -->
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3.5">
                         <h4 class="font-bold text-slate-800"><i class="fa-solid fa-key mr-1 text-rose-500"></i> เปลี่ยนรหัสผ่าน</h4>
                         <div class="space-y-2">
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">รหัสผ่านเดิม</label>
+                                <label class="block text-[11px] text-slate-500 mb-0.5">รหัสผ่านเดิม</label>
                                 <input type="password" id="setProfileOldPassword" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500">
                             </div>
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">รหัสผ่านใหม่</label>
+                                <label class="block text-[11px] text-slate-500 mb-0.5">รหัสผ่านใหม่</label>
                                 <input type="password" id="setProfileNewPassword" oninput="checkChangePasswordStrength(this.value)" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500">
                                 <div id="changePasswordStrengthWrapper" class="mt-1.5 space-y-1">
                                     <div class="h-1 w-full bg-slate-100 rounded-full overflow-hidden flex">
                                         <div id="changeStrengthBar" class="h-full transition-all duration-300 w-0 bg-rose-500"></div>
                                     </div>
-                                    <span id="changeStrengthText" class="text-[9px] text-slate-400">ระดับความปลอดภัย: แย่มาก (ต้องการความยาว 6 ตัว ขึ้นไป ตัวเลข และสัญลักษณ์)</span>
+                                    <span id="changeStrengthText" class="text-[10px] text-slate-400">ระดับความปลอดภัย: แย่มาก (ต้องการความยาว 6 ตัว ขึ้นไป ตัวเลข และสัญลักษณ์)</span>
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">ยืนยันรหัสผ่านใหม่</label>
+                                <label class="block text-[11px] text-slate-500 mb-0.5">ยืนยันรหัสผ่านใหม่</label>
                                 <input type="password" id="setProfileConfirmPassword" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500">
                             </div>
                         </div>
@@ -1308,7 +1308,7 @@
                 <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
                     <strong class="text-emerald-700 block mb-0.5"><i class="fa-solid fa-bolt mr-1"></i> สูตรคำนวณ Safe-to-Spend:</strong>
                     ตัวเลขใหญ่สุดที่แสดงบนบัตรคิดจาก: 
-                    <div class="font-mono bg-slate-100 p-1.5 rounded mt-1 text-[11px] text-slate-700">
+                    <div class="font-mono bg-slate-100 p-1.5 rounded mt-1 text-xs text-slate-700">
                         เงินสดในกระเป๋า + ลูกหนี้ค้างคืน - ยอดหนี้บัตรเครดิต - ค่าบริการรายเดือนซ้ำๆ
                     </div>
                 </div>
@@ -1320,7 +1320,7 @@
 
                 <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
                     <strong class="text-indigo-700 block mb-0.5"><i class="fa-regular fa-paper-plane mr-1"></i> ดาวน์โหลดการ์ดภาพทวงหนี้แบบสุภาพ:</strong>
-                    ที่รายการลูกหนี้ ลองกดปุ่ม <span class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-[10px] font-semibold">แชร์สลิปทวง</span> คุณสามารถกดดาวน์โหลดไฟล์ภาพ PNG คมชัดเพื่อส่งให้เพื่อนผ่าน LINE แบบนุ่มนวลได้ทันที!
+                    ที่รายการลูกหนี้ ลองกดปุ่ม <span class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-[11px] font-semibold">แชร์สลิปทวง</span> คุณสามารถกดดาวน์โหลดไฟล์ภาพ PNG คมชัดเพื่อส่งให้เพื่อนผ่าน LINE แบบนุ่มนวลได้ทันที!
                 </div>
 
                 <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
@@ -1341,7 +1341,7 @@
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-bell mr-2 text-rose-500"></i> แจ้งเตือนยอดกำหนดชำระ</h3>
                 <div class="flex items-center gap-2">
-                    <button onclick="clearAllNotifications()" id="clearAllNotificationsBtn" class="text-[11px] font-semibold text-slate-400 hover:text-rose-500 transition-colors hidden">เคลียร์ทั้งหมด</button>
+                    <button onclick="clearAllNotifications()" id="clearAllNotificationsBtn" class="text-xs font-semibold text-slate-400 hover:text-rose-500 transition-colors hidden">เคลียร์ทั้งหมด</button>
                     <button onclick="closeNotificationModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
                 </div>
             </div>
