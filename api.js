@@ -15,7 +15,14 @@ const state = {
     monthlyTrend: []
 };
 
-const API_BASE = "/api";
+// When running inside the Capacitor Android shell (mobile/), the app is
+// loaded from a native WebView origin, not the FastAPI server's origin — so
+// a relative "/api" path resolves nowhere. window.Capacitor is injected by
+// the native runtime automatically (no import needed) and is absent in the
+// browser/PWA, where the relative path is correct since the frontend is
+// served by the same FastAPI process as the API.
+const NATIVE_DEFAULT_API_ORIGIN = "https://sd.praj.uk";
+const API_BASE = (window.Capacitor?.isNativePlatform?.() ? NATIVE_DEFAULT_API_ORIGIN : "") + "/api";
 
 function cleanUUID(id) {
     if (!id || typeof id !== "string") return null;

@@ -121,7 +121,7 @@ function renderOverviewChart(totalCash, totalDebts, totalCreditCards, totalRecur
                         boxWidth: 10,
                         font: {
                             size: 10,
-                            family: 'Outfit, Prompt, sans-serif'
+                            family: 'Prompt, Outfit, sans-serif'
                         },
                         padding: 10
                     }
@@ -298,7 +298,7 @@ async function renderMonthlyTrendChart() {
                 y: { ticks: { font: { size: 9 } }, beginAtZero: true }
             },
             plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, family: 'Outfit, Prompt, sans-serif' }, padding: 10 } },
+                legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, family: 'Prompt, Outfit, sans-serif' }, padding: 10 } },
                 tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ฿${ctx.raw.toLocaleString('th-TH')}` } }
             }
         }

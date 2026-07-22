@@ -1,0 +1,124 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - "mobile/**"
+      - "index.html"
+      - "app.js"
+      - "api.js"
+      - "manifest.json"
+      - "sw.js"
+      - "icons/**"
+      - ".github/workflows/android-apk.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK platform & build-tools
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Install npm dependencies
+        working-directory: mobile
+        run: npm ci
+
+      - name: Sync web assets into the Android project
+        working-directory: mobile
+        run: npm run sync
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('mobile/android/**/*.gradle*', 'mobile/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Build debug APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: somdul-debug-apk
+          path: mobile/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      # Signed release build — only runs when the repo has signing secrets
+      # configured (Settings > Secrets and variables > Actions):
+      #   ANDROID_KEYSTORE_BASE64   base64 of the .jks/.keystore file
+      #   ANDROID_KEYSTORE_PASSWORD
+      #   ANDROID_KEY_ALIAS
+      #   ANDROID_KEY_PASSWORD
+      # Without them this step is skipped and only the debug APK is built.
+      - name: Check for signing secrets
+        id: signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decode signing keystore
+        if: steps.signing.outputs.present == 'true'
+        working-directory: mobile/android
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > app/release.jks
+
+      - name: Write keystore.properties
+        if: steps.signing.outputs.present == 'true'
+        working-directory: mobile/android/app
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cat > keystore.properties <<EOF
+          storeFile=release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Build signed release APK
+        if: steps.signing.outputs.present == 'true'
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Upload release APK
+        if: steps.signing.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: somdul-release-apk
+          path: mobile/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error

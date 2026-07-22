@@ -1,0 +1,9 @@
+{
+  "appId": "uk.praj.sd",
+  "appName": "สมดุล",
+  "webDir": "www",
+  "backgroundColor": "#0f1115",
+  "android": {
+    "backgroundColor": "#0f1115"
+  }
+}
