@@ -44,6 +44,26 @@ docker compose up --build
 
 เปิด `http://localhost:8001`
 
+## แอป Android (APK)
+
+`mobile/` เป็น [Capacitor](https://capacitorjs.com) project ที่ห่อ `frontend/` เป็นแอป Android แบบ WebView — เนื่องจากแอปนี้ต้องคุยกับ backend (login/JWT/API) ตัว APK จึงต้องรู้ว่าจะเชื่อมต่อเซิร์ฟเวอร์ไหน (ต่างจาก PWA ที่เสิร์ฟจาก origin เดียวกับ backend เลยใช้ path `/api` เฉยๆ ได้):
+
+- ค่าเริ่มต้นของแอป Android คือ `https://sd.praj.uk` (กำหนดใน `frontend/api.js`, ตรวจจาก `Capacitor.isNativePlatform()`)
+- ผู้ใช้แก้ไขได้เองจากปุ่ม "⚙ ตั้งค่าเซิร์ฟเวอร์" ที่หน้า login (เก็บใน `localStorage`, มีปุ่มทดสอบการเชื่อมต่อ)
+
+Build APK ผ่าน GitHub Actions workflow `.github/workflows/android-apk.yml` (trigger เองผ่าน "Run workflow" หรือ push ที่แก้ `mobile/**`/`frontend/**` บน `main`) — ได้ debug APK ที่ยังไม่ได้ sign เป็น artifact ชื่อ `somdul-debug-apk` (สำหรับติดตั้งทดสอบเท่านั้น ยังไม่พร้อมขึ้น Play Store)
+
+Build เองในเครื่อง (ต้องมี Android SDK + JDK 21):
+
+```bash
+cd mobile
+npm install
+npx cap sync android
+cd android && ./gradlew assembleDebug
+```
+
+ไฟล์ APK จะอยู่ที่ `mobile/android/app/build/outputs/apk/debug/app-debug.apk`
+
 ## โครงสร้างไฟล์
 
 ```
@@ -62,6 +82,8 @@ backend/
     loans.py, dashboard.py, budgets.py, push.py
 frontend/
   index.html, app.js, api.js, styles.css, sw.js, manifest.json, icons/
+mobile/
+  package.json, capacitor.config.json, android/   # Capacitor Android wrapper (see above)
 ```
 
 ## Data model

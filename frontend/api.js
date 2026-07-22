@@ -1,4 +1,9 @@
-const API_BASE = "/api";
+// When served by the FastAPI backend itself (web/PWA), a relative "/api" is
+// correct. Packaged native builds (Capacitor) load the frontend from a local
+// asset origin instead, so they need an absolute backend URL — this default
+// is only used there and can be overridden at runtime (see setApiOrigin).
+const NATIVE_DEFAULT_API_ORIGIN = "https://sd.praj.uk";
+const API_ORIGIN_KEY = "expense-api-origin-v1";
 const TOKEN_KEY = "expense-token-v1";
 
 let _token = localStorage.getItem(TOKEN_KEY) || null;
@@ -8,6 +13,22 @@ class APIError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+function isNativePlatform() {
+  return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+}
+
+function getApiOrigin() {
+  const stored = localStorage.getItem(API_ORIGIN_KEY);
+  if (stored) return stored.replace(/\/$/, "");
+  return isNativePlatform() ? NATIVE_DEFAULT_API_ORIGIN : "";
+}
+
+function setApiOrigin(url) {
+  const trimmed = (url || "").trim().replace(/\/$/, "");
+  if (trimmed) localStorage.setItem(API_ORIGIN_KEY, trimmed);
+  else localStorage.removeItem(API_ORIGIN_KEY);
 }
 
 function setToken(token) {
@@ -27,7 +48,7 @@ async function _call(method, path, body, isForm) {
 
   let resp;
   try {
-    resp = await fetch(`${API_BASE}${path}`, {
+    resp = await fetch(`${getApiOrigin()}/api${path}`, {
       method,
       headers,
       body: body ? (isForm ? body : JSON.stringify(body)) : undefined,
@@ -81,7 +102,7 @@ const transactions = {
   async exportCsv(params = {}) {
     const headers = {};
     if (_token) headers["Authorization"] = `Bearer ${_token}`;
-    const resp = await fetch(`${API_BASE}/transactions/export/csv${qs(params)}`, { headers });
+    const resp = await fetch(`${getApiOrigin()}/api/transactions/export/csv${qs(params)}`, { headers });
     if (!resp.ok) throw new APIError("ส่งออกไฟล์ไม่สำเร็จ", resp.status);
     const blob = await resp.blob();
     const disposition = resp.headers.get("Content-Disposition") || "";
@@ -152,7 +173,7 @@ function qs(params) {
 
 async function checkHealth() {
   try {
-    const resp = await fetch("/health");
+    const resp = await fetch(`${getApiOrigin()}/health`);
     return resp.ok;
   } catch (_) {
     return false;
@@ -170,5 +191,9 @@ window.api = {
   push,
   checkHealth,
   getToken,
+  getApiOrigin,
+  setApiOrigin,
+  isNativePlatform,
+  NATIVE_DEFAULT_API_ORIGIN,
   APIError,
 };

@@ -198,6 +198,54 @@ function openPinSettingsModal() {
   });
 }
 
+// ---------------- Server settings (needed for packaged/native builds) ----------------
+// The Android app has no origin of its own, so it must be told which backend
+// to talk to. Web/PWA builds don't need this (the default relative "/api"
+// already works) but the field is available everywhere for convenience.
+function openServerSettingsModal() {
+  const current = api.getApiOrigin();
+  openModal(`
+    <h3>ตั้งค่าเซิร์ฟเวอร์</h3>
+    <p style="color:var(--text-dim);font-size:0.8rem;">
+      ที่อยู่ของเซิร์ฟเวอร์ที่แอปจะเชื่อมต่อ (จำเป็นสำหรับแอป Android) ปล่อยว่างเพื่อใช้ค่าเริ่มต้น
+    </p>
+    <form id="serverSettingsForm">
+      <div class="field">
+        <label>URL เซิร์ฟเวอร์</label>
+        <input id="serverOriginInput" type="url" placeholder="${esc(api.NATIVE_DEFAULT_API_ORIGIN)}" value="${esc(current)}" autocomplete="off" />
+      </div>
+      <div class="form-error" id="serverSettingsError"></div>
+      <div class="modal-footer">
+        <button type="button" class="ghost" data-action="test-connection">ทดสอบการเชื่อมต่อ</button>
+        <button type="button" class="ghost" data-action="close-modal">ยกเลิก</button>
+        <button type="submit" class="primary">บันทึก</button>
+      </div>
+    </form>
+  `);
+  document.getElementById("modalHost").onclick = async (e) => {
+    if (e.target.closest('[data-action="close-modal"]')) {
+      closeModal();
+      return;
+    }
+    if (e.target.closest('[data-action="test-connection"]')) {
+      const errorEl = document.getElementById("serverSettingsError");
+      const url = document.getElementById("serverOriginInput").value.trim();
+      const prevOrigin = api.getApiOrigin();
+      api.setApiOrigin(url);
+      const ok = await api.checkHealth();
+      api.setApiOrigin(prevOrigin);
+      errorEl.style.color = ok ? "var(--success, #2ecc71)" : "";
+      errorEl.textContent = ok ? "เชื่อมต่อสำเร็จ" : "เชื่อมต่อไม่สำเร็จ";
+    }
+  };
+  document.getElementById("serverSettingsForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    api.setApiOrigin(document.getElementById("serverOriginInput").value.trim());
+    toast("บันทึกที่อยู่เซิร์ฟเวอร์แล้ว", "success");
+    closeModal();
+  });
+}
+
 // ---------------- Push notifications ----------------
 async function registerServiceWorkerIfSupported() {
   if (!("serviceWorker" in navigator)) return null;
@@ -275,6 +323,7 @@ async function onNotifyToggle() {
 async function boot() {
   initTheme();
   document.getElementById("loginForm").addEventListener("submit", onLoginSubmit);
+  document.getElementById("serverSettingsBtn").addEventListener("click", openServerSettingsModal);
   document.getElementById("pinUnlockForm").addEventListener("submit", onPinUnlockSubmit);
   document.getElementById("logoutBtn").addEventListener("click", onLogout);
   document.getElementById("themeToggleBtn").addEventListener("click", toggleTheme);
