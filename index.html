@@ -153,8 +153,11 @@
             </div>
             <div class="flex items-center gap-1.5">
                 <span id="offlineSyncBadge" class="hidden items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-700"></span>
-                <button onclick="openSettingsModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors" title="ตั้งค่าระบบ">
+                <button onclick="openSettingsModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors" title="จัดการข้อมูล (กระเป๋าเงิน/บัตร/งบ/หมวดหมู่)">
                     <i class="fa-solid fa-gear"></i>
+                </button>
+                <button onclick="openAccountModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors" title="บัญชีผู้ใช้งาน/ระบบ">
+                    <i class="fa-solid fa-user"></i>
                 </button>
                 <button onclick="toggleInfoModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors" title="ข้อมูลการใช้งาน">
                     <i class="fa-solid fa-circle-info"></i>
@@ -897,12 +900,6 @@
                     <button onclick="switchSettingsTab('categories')" id="setTabBtn-categories" class="shrink-0 md:shrink md:w-full flex items-center justify-center md:justify-start gap-2 px-3.5 py-2 md:py-2.5 text-center md:text-left font-semibold rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 whitespace-nowrap transition-colors">
                         <i class="fa-solid fa-tags w-4 text-center"></i> หมวดหมู่
                     </button>
-                    <button onclick="switchSettingsTab('system')" id="setTabBtn-system" class="shrink-0 md:shrink md:w-full flex items-center justify-center md:justify-start gap-2 px-3.5 py-2 md:py-2.5 text-center md:text-left font-semibold rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 whitespace-nowrap transition-colors">
-                        <i class="fa-solid fa-sliders w-4 text-center"></i> ระบบ
-                    </button>
-                    <button onclick="switchSettingsTab('profile')" id="setTabBtn-profile" class="shrink-0 md:shrink md:w-full flex items-center justify-center md:justify-start gap-2 px-3.5 py-2 md:py-2.5 text-center md:text-left font-semibold rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 whitespace-nowrap transition-colors">
-                        <i class="fa-solid fa-user w-4 text-center"></i> ผู้ใช้งาน
-                    </button>
                 </div>
 
             <!-- Settings Tab Content (Scrollable) -->
@@ -946,6 +943,33 @@
 
                     <div id="settingsWalletList" class="divide-y divide-slate-100 border border-slate-200/70 rounded-xl bg-white overflow-hidden">
                         <!-- Dynamically Loaded -->
+                    </div>
+
+                    <!-- PromptPay shortcut — same saved value as the Account modal's Profile tab -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <h4 class="font-bold text-slate-800"><i class="fa-solid fa-qrcode mr-1 text-indigo-500"></i> ตั้งค่าพร้อมเพย์สำหรับรับชำระ</h4>
+                        <p class="text-[11px] text-slate-500 leading-normal">ข้อมูลนี้จะแสดงในสลิปทวงหนี้ที่แชร์ให้เพื่อน เพื่อให้โอนเงินคืนได้สะดวกขึ้น</p>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">เบอร์โทร/เลขบัตรประชาชนพร้อมเพย์</label>
+                                <input type="text" id="setWalletPromptPayAccount" placeholder="เช่น 081-234-5678" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">รูป QR พร้อมเพย์ (อัปโหลดจากแอปธนาคาร)</label>
+                                <div class="flex items-center gap-3">
+                                    <div id="walletPromptPayQrPreview" class="w-16 h-16 rounded-lg border border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0">
+                                        <i class="fa-solid fa-qrcode text-slate-300 text-xl"></i>
+                                    </div>
+                                    <div class="flex-1 space-y-1 min-w-0">
+                                        <input type="file" accept="image/*" id="setWalletPromptPayQrFile" onchange="handlePromptPayQrSelect(event, 'wallet')" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                        <button type="button" onclick="clearPromptPayQr('wallet')" id="clearWalletPromptPayQrBtn" class="hidden text-[10px] text-rose-500 hover:underline">ลบรูป QR</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="savePromptPaySubmit('wallet')" class="w-full bg-indigo-500 text-white hover:bg-indigo-600 py-2.5 rounded-xl font-bold transition-colors text-xs shadow-sm">
+                            บันทึกข้อมูลพร้อมเพย์
+                        </button>
                     </div>
                 </div>
 
@@ -1137,6 +1161,29 @@
                     </div>
                 </div>
 
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 7b: ACCOUNT (ระบบ + ผู้ใช้งาน — แยกออกมาจาก Settings เพื่อไม่ให้หน้าตั้งค่าแน่นเกินไป) -->
+    <div id="accountModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden" onclick="if(event.target===this) closeAccountModal()">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md md:max-w-xl w-full p-6 animate-in slide-in-from-bottom duration-200 max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 shrink-0">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-user-gear mr-2 text-slate-600"></i> บัญชีผู้ใช้งาน</h3>
+                <button onclick="closeAccountModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="flex gap-1.5 mb-4 text-xs shrink-0">
+                <button onclick="switchAccountTab('profile')" id="setTabBtn-profile" class="flex-1 flex items-center justify-center gap-2 px-3.5 py-2 font-semibold rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 transition-colors">
+                    <i class="fa-solid fa-user w-4 text-center"></i> ข้อมูลส่วนตัว
+                </button>
+                <button onclick="switchAccountTab('system')" id="setTabBtn-system" class="flex-1 flex items-center justify-center gap-2 px-3.5 py-2 font-semibold rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+                    <i class="fa-solid fa-sliders w-4 text-center"></i> ระบบ
+                </button>
+            </div>
+
+            <div class="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 text-xs">
                 <!-- SYSTEM SETTINGS -->
                 <div id="setTab-system" class="space-y-4 hidden py-2">
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
@@ -1161,7 +1208,7 @@
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                         <h4 class="font-bold text-slate-800"><i class="fa-solid fa-server mr-1 text-slate-600"></i> จัดการระบบการเชื่อมต่อ</h4>
                         <p class="text-[11px] text-slate-500 leading-normal">จัดการเซสชันการเข้าใช้งานบัญชีของคุณจากส่วนนี้</p>
-                        
+
                         <div class="space-y-2 pt-2">
                             <button onclick="handleLogout()" class="w-full bg-rose-500 text-white hover:bg-rose-600 py-2.5 rounded-xl font-bold transition-colors flex items-center justify-center gap-1.5">
                                 <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ (Log Out)
@@ -1193,7 +1240,7 @@
                     <!-- PromptPay Setup Section -->
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                         <h4 class="font-bold text-slate-800"><i class="fa-solid fa-qrcode mr-1 text-indigo-500"></i> ตั้งค่าพร้อมเพย์สำหรับรับชำระ</h4>
-                        <p class="text-[11px] text-slate-500 leading-normal">ข้อมูลนี้จะแสดงในสลิปทวงหนี้ที่แชร์ให้เพื่อน เพื่อให้โอนเงินคืนได้สะดวกขึ้น</p>
+                        <p class="text-[11px] text-slate-500 leading-normal">ข้อมูลนี้จะแสดงในสลิปทวงหนี้ที่แชร์ให้เพื่อน เพื่อให้โอนเงินคืนได้สะดวกขึ้น (แก้ไขได้จากที่นี่ หรือจากแท็บ "กระเป๋าเงิน" ในหน้าตั้งค่าก็ได้)</p>
                         <div class="space-y-2">
                             <div>
                                 <label class="block text-[10px] text-slate-500 mb-0.5">เบอร์โทร/เลขบัตรประชาชนพร้อมเพย์</label>
@@ -1206,13 +1253,13 @@
                                         <i class="fa-solid fa-qrcode text-slate-300 text-xl"></i>
                                     </div>
                                     <div class="flex-1 space-y-1 min-w-0">
-                                        <input type="file" accept="image/*" id="setPromptPayQrFile" onchange="handlePromptPayQrSelect(event)" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                                        <button type="button" onclick="clearPromptPayQr()" id="clearPromptPayQrBtn" class="hidden text-[10px] text-rose-500 hover:underline">ลบรูป QR</button>
+                                        <input type="file" accept="image/*" id="setPromptPayQrFile" onchange="handlePromptPayQrSelect(event, 'profile')" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                        <button type="button" onclick="clearPromptPayQr('profile')" id="clearPromptPayQrBtn" class="hidden text-[10px] text-rose-500 hover:underline">ลบรูป QR</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <button onclick="savePromptPaySubmit()" class="w-full bg-indigo-500 text-white hover:bg-indigo-600 py-2.5 rounded-xl font-bold transition-colors text-xs shadow-sm">
+                        <button onclick="savePromptPaySubmit('profile')" class="w-full bg-indigo-500 text-white hover:bg-indigo-600 py-2.5 rounded-xl font-bold transition-colors text-xs shadow-sm">
                             บันทึกข้อมูลพร้อมเพย์
                         </button>
                     </div>
@@ -1245,7 +1292,6 @@
                         </button>
                     </div>
                 </div>
-            </div>
             </div>
         </div>
     </div>

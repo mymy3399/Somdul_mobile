@@ -2354,9 +2354,7 @@ function editCard(cardId) {
 
 // settings tabs
 let activeSettingsTab = 'wallets';
-function switchSettingsTab(tabId) {
-    activeSettingsTab = tabId;
-    const tabs = ['wallets', 'cards', 'budgets', 'categories', 'system', 'profile'];
+function switchTabGroup(tabs, tabId) {
     tabs.forEach(t => {
         const el = document.getElementById(`setTab-${t}`);
         const btn = document.getElementById(`setTabBtn-${t}`);
@@ -2370,16 +2368,37 @@ function switchSettingsTab(tabId) {
             }
         }
     });
-    
-    if (tabId === 'wallets') renderSettingsWallets();
+}
+
+function switchSettingsTab(tabId) {
+    activeSettingsTab = tabId;
+    switchTabGroup(['wallets', 'cards', 'budgets', 'categories'], tabId);
+
+    if (tabId === 'wallets') {
+        renderSettingsWallets();
+        populateWalletPromptPayFields();
+    }
     if (tabId === 'cards') renderSettingsCards();
     if (tabId === 'budgets') renderSettingsBudgets();
     if (tabId === 'categories') {
         renderSettingsCategories();
         renderSettingsQuickTemplates();
     }
+}
+
+function switchAccountTab(tabId) {
+    switchTabGroup(['system', 'profile'], tabId);
     if (tabId === 'system') syncFontSizeButtons();
     if (tabId === 'profile') populateUserProfileFields();
+}
+
+function openAccountModal() {
+    switchAccountTab('profile');
+    document.getElementById('accountModal').classList.remove('hidden');
+}
+
+function closeAccountModal() {
+    document.getElementById('accountModal').classList.add('hidden');
 }
 
 function renderSettingsBudgets() {
@@ -2864,9 +2883,20 @@ function populateUserProfileFields() {
 
 let pendingPromptPayQrData = undefined;
 
-function renderPromptPayQrPreview(dataUrl) {
-    const preview = document.getElementById('promptPayQrPreview');
-    const clearBtn = document.getElementById('clearPromptPayQrBtn');
+// PromptPay setup exists in two places (Profile tab in the account modal,
+// and a shortcut in the Wallets settings tab) sharing one saved value —
+// `source` picks which set of input/preview element ids to read/write.
+function promptPayIds(source) {
+    return source === 'wallet'
+        ? { account: 'setWalletPromptPayAccount', file: 'setWalletPromptPayQrFile', preview: 'walletPromptPayQrPreview', clearBtn: 'clearWalletPromptPayQrBtn' }
+        : { account: 'setPromptPayAccount', file: 'setPromptPayQrFile', preview: 'promptPayQrPreview', clearBtn: 'clearPromptPayQrBtn' };
+}
+
+function renderPromptPayQrPreview(dataUrl, source = 'profile') {
+    const ids = promptPayIds(source);
+    const preview = document.getElementById(ids.preview);
+    const clearBtn = document.getElementById(ids.clearBtn);
+    if (!preview || !clearBtn) return;
     if (dataUrl) {
         preview.innerHTML = `<img src="${dataUrl}" class="w-full h-full object-cover">`;
         clearBtn.classList.remove('hidden');
@@ -2876,7 +2906,7 @@ function renderPromptPayQrPreview(dataUrl) {
     }
 }
 
-function handlePromptPayQrSelect(event) {
+function handlePromptPayQrSelect(event, source = 'profile') {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -2894,19 +2924,19 @@ function handlePromptPayQrSelect(event) {
     const reader = new FileReader();
     reader.onload = () => {
         pendingPromptPayQrData = reader.result;
-        renderPromptPayQrPreview(pendingPromptPayQrData);
+        renderPromptPayQrPreview(pendingPromptPayQrData, source);
     };
     reader.readAsDataURL(file);
 }
 
-function clearPromptPayQr() {
+function clearPromptPayQr(source = 'profile') {
     pendingPromptPayQrData = "";
-    document.getElementById('setPromptPayQrFile').value = '';
-    renderPromptPayQrPreview(null);
+    document.getElementById(promptPayIds(source).file).value = '';
+    renderPromptPayQrPreview(null, source);
 }
 
-async function savePromptPaySubmit() {
-    const account = document.getElementById('setPromptPayAccount').value.trim();
+async function savePromptPaySubmit(source = 'profile') {
+    const account = document.getElementById(promptPayIds(source).account).value.trim();
     try {
         await apiUpdatePromptPay(account, pendingPromptPayQrData);
         pendingPromptPayQrData = undefined;
@@ -2914,6 +2944,15 @@ async function savePromptPaySubmit() {
     } catch (err) {
         alertModal(err.message);
     }
+}
+
+function populateWalletPromptPayFields() {
+    if (!state.currentUser) return;
+    const el = document.getElementById('setWalletPromptPayAccount');
+    if (!el) return;
+    el.value = state.currentUser.promptpay_account || '';
+    document.getElementById('setWalletPromptPayQrFile').value = '';
+    renderPromptPayQrPreview(state.currentUser.promptpay_qr_data, 'wallet');
 }
 
 async function handleUpdateProfileSubmit() {
@@ -2990,6 +3029,10 @@ window.closePayRecurringModal = closePayRecurringModal;
 window.openSettingsModal = openSettingsModal;
 window.closeSettingsModal = closeSettingsModal;
 window.switchSettingsTab = switchSettingsTab;
+window.openAccountModal = openAccountModal;
+window.closeAccountModal = closeAccountModal;
+window.switchAccountTab = switchAccountTab;
+window.populateWalletPromptPayFields = populateWalletPromptPayFields;
 window.showAddWalletForm = showAddWalletForm;
 window.hideWalletForm = hideWalletForm;
 window.editWallet = editWallet;
