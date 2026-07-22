@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -35,7 +36,7 @@ def list_wallets(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    statement = select(Wallet).where(Wallet.user_id == current_user.id)
+    statement = select(Wallet).where(Wallet.user_id == current_user.id, Wallet.deleted_at == None)
     return session.exec(statement).all()
 
 @router.post("", response_model=WalletResponseSchema, status_code=status.HTTP_201_CREATED)
@@ -62,15 +63,16 @@ def update_wallet(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    statement = select(Wallet).where(Wallet.id == wallet_id, Wallet.user_id == current_user.id)
+    statement = select(Wallet).where(Wallet.id == wallet_id, Wallet.user_id == current_user.id, Wallet.deleted_at == None)
     wallet = session.exec(statement).first()
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
-    
+
     wallet.wallet_name = data.wallet_name
     wallet.wallet_type = data.wallet_type
     wallet.balance = data.balance
-    
+    wallet.updated_at = datetime.utcnow()
+
     session.add(wallet)
     session.commit()
     session.refresh(wallet)
@@ -82,11 +84,13 @@ def delete_wallet(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    statement = select(Wallet).where(Wallet.id == wallet_id, Wallet.user_id == current_user.id)
+    statement = select(Wallet).where(Wallet.id == wallet_id, Wallet.user_id == current_user.id, Wallet.deleted_at == None)
     wallet = session.exec(statement).first()
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
-    
-    session.delete(wallet)
+
+    wallet.deleted_at = datetime.utcnow()
+    wallet.updated_at = wallet.deleted_at
+    session.add(wallet)
     session.commit()
     return

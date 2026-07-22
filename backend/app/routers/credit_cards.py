@@ -46,7 +46,7 @@ def list_credit_cards(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    statement = select(CreditCard).where(CreditCard.user_id == current_user.id)
+    statement = select(CreditCard).where(CreditCard.user_id == current_user.id, CreditCard.deleted_at == None)
     return session.exec(statement).all()
 
 @router.post("", response_model=CreditCardResponseSchema, status_code=status.HTTP_201_CREATED)
@@ -75,17 +75,18 @@ def update_credit_card(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    statement = select(CreditCard).where(CreditCard.id == card_id, CreditCard.user_id == current_user.id)
+    statement = select(CreditCard).where(CreditCard.id == card_id, CreditCard.user_id == current_user.id, CreditCard.deleted_at == None)
     card = session.exec(statement).first()
     if not card:
         raise HTTPException(status_code=404, detail="Credit card not found")
-    
+
     card.card_name = data.card_name
     card.billing_cycle_day = data.billing_cycle_day
     card.due_day = data.due_day
     card.credit_limit = data.credit_limit
     card.current_balance = data.current_balance
-    
+    card.updated_at = datetime.utcnow()
+
     session.add(card)
     session.commit()
     session.refresh(card)
@@ -97,12 +98,14 @@ def delete_credit_card(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    statement = select(CreditCard).where(CreditCard.id == card_id, CreditCard.user_id == current_user.id)
+    statement = select(CreditCard).where(CreditCard.id == card_id, CreditCard.user_id == current_user.id, CreditCard.deleted_at == None)
     card = session.exec(statement).first()
     if not card:
         raise HTTPException(status_code=404, detail="Credit card not found")
-    
-    session.delete(card)
+
+    card.deleted_at = datetime.utcnow()
+    card.updated_at = card.deleted_at
+    session.add(card)
     session.commit()
     return
 
@@ -114,13 +117,13 @@ def pay_credit_card(
     session: Session = Depends(get_session)
 ):
     # Fetch credit card
-    card_stmt = select(CreditCard).where(CreditCard.id == card_id, CreditCard.user_id == current_user.id)
+    card_stmt = select(CreditCard).where(CreditCard.id == card_id, CreditCard.user_id == current_user.id, CreditCard.deleted_at == None)
     card = session.exec(card_stmt).first()
     if not card:
         raise HTTPException(status_code=404, detail="Credit card not found")
-    
+
     # Fetch wallet
-    wallet_stmt = select(Wallet).where(Wallet.id == payment.wallet_id, Wallet.user_id == current_user.id)
+    wallet_stmt = select(Wallet).where(Wallet.id == payment.wallet_id, Wallet.user_id == current_user.id, Wallet.deleted_at == None)
     wallet = session.exec(wallet_stmt).first()
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
@@ -136,7 +139,11 @@ def pay_credit_card(
     card.current_balance -= payment.amount
     if card.current_balance < 0:
         card.current_balance = Decimal("0.00") # Cannot have negative credit card debt balance
-        
+
+    now = datetime.utcnow()
+    wallet.updated_at = now
+    card.updated_at = now
+
     # Create audit transaction
     transaction = Transaction(
         user_id=current_user.id,
@@ -145,9 +152,10 @@ def pay_credit_card(
         category="BILL",
         amount=payment.amount,
         wallet_id=wallet.id,
-        created_at=datetime.utcnow()
+        created_at=now,
+        updated_at=now
     )
-    
+
     session.add(wallet)
     session.add(card)
     session.add(transaction)

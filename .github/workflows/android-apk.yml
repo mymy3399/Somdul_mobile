@@ -9,6 +9,7 @@ on:
       - "index.html"
       - "app.js"
       - "api.js"
+      - "db.js"
       - "manifest.json"
       - "sw.js"
       - "icons/**"

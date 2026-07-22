@@ -59,6 +59,83 @@ function getJsonHeaders() {
 }
 
 // ----------------------------------------------------
+// OFFLINE QUEUEING
+// ----------------------------------------------------
+// A sentinel returned by queueableFetch() when a mutation couldn't reach the
+// network and was queued in IndexedDB instead. Every apiCreate.../apiUpdate.../
+// apiDelete.../apiPay... function checks for this and returns early instead
+// of treating it as a normal response — the caller (app.js) sees the same
+// "await apiXxx(...) resolved, now re-render" shape either way.
+const OFFLINE_QUEUED = Symbol("offline-queued");
+
+// Wraps fetch() for a mutation: on a real network failure (offline, DNS
+// down, etc. — a rejected fetch(), not an HTTP error status) the call is
+// queued in IndexedDB under `opName`/`opArgs` and OFFLINE_QUEUED is returned
+// instead of throwing, so a create/edit/delete made offline doesn't crash
+// the UI — it just applies once connectivity returns and syncPendingOps()
+// replays it against the real endpoint.
+// Set by syncPendingOps() while it's replaying a queued op, so a network
+// failure mid-replay throws (letting the drain loop stop cleanly) instead of
+// queueing a second, duplicate copy of the same op.
+let _isReplaying = false;
+
+async function queueableFetch(url, options, opName, opArgs) {
+    try {
+        return await fetch(url, options);
+    } catch (networkErr) {
+        if (_isReplaying) throw networkErr;
+        await dbQueueOp(opName, opArgs);
+        return OFFLINE_QUEUED;
+    }
+}
+
+// Replays queued offline mutations in the order they were made, by calling
+// the same top-level apiXxx function again with its original arguments.
+// Stops (without dropping the remaining queue) the moment something is
+// still unreachable, so it can pick back up on the next online/interval
+// trigger. A queued op that now fails for a real reason (e.g. 404 because
+// the record was deleted from another device in the meantime) is dropped
+// after logging, since retrying it would never succeed.
+let _syncingPendingOps = false;
+async function syncPendingOps() {
+    if (_syncingPendingOps) return;
+    _syncingPendingOps = true;
+    try {
+        const ops = await dbListPendingOps();
+        for (const op of ops) {
+            const fn = window[op.fn];
+            if (typeof fn !== "function") {
+                await dbRemovePendingOp(op.opId);
+                continue;
+            }
+            _isReplaying = true;
+            try {
+                await fn(...op.args);
+                await dbRemovePendingOp(op.opId);
+            } catch (err) {
+                if (err instanceof TypeError) {
+                    // Still offline — stop draining, retry later.
+                    break;
+                }
+                console.error(`Dropping queued offline action ${op.fn} — it failed to replay`, err);
+                await dbRemovePendingOp(op.opId);
+            } finally {
+                _isReplaying = false;
+            }
+        }
+    } finally {
+        _syncingPendingOps = false;
+    }
+    await apiFetchAllData();
+}
+
+if (typeof window !== "undefined") {
+    window.addEventListener("online", () => {
+        syncPendingOps().then(() => window.refreshAppUI?.());
+    });
+}
+
+// ----------------------------------------------------
 // AUTH & SESSION ACTIONS
 // ----------------------------------------------------
 async function apiFetchMe() {
@@ -78,6 +155,16 @@ async function apiFetchMe() {
         }
     } catch (e) {
         console.error("Failed to fetch user profiles", e);
+        // Network unreachable (not a rejected/expired token, which is the
+        // res.ok === false branch above) — trust the last-known profile
+        // cached in IndexedDB so a fully offline cold start still lets a
+        // previously-logged-in user into the app instead of bouncing them
+        // to the login screen.
+        const cached = await dbLoadCache();
+        if (cached.currentUser) {
+            state.currentUser = cached.currentUser;
+            return state.currentUser;
+        }
         return null;
     }
 }
@@ -136,11 +223,12 @@ function apiLogout() {
 }
 
 async function apiDismissNotification(notifId) {
-    const res = await fetch(`${API_BASE}/notifications/dismiss`, {
+    const res = await queueableFetch(`${API_BASE}/notifications/dismiss`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify({ notif_id: notifId })
-    });
+    }, "apiDismissNotification", [notifId]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถบันทึกการอ่านแล้วได้");
 }
 
@@ -148,20 +236,22 @@ async function apiDismissNotification(notifId) {
 // BUDGETS CRUD ACTIONS
 // ----------------------------------------------------
 async function apiSaveBudget(category, monthly_limit) {
-    const res = await fetch(`${API_BASE}/budgets`, {
+    const res = await queueableFetch(`${API_BASE}/budgets`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify({ category, monthly_limit: Number(monthly_limit) })
-    });
+    }, "apiSaveBudget", [category, monthly_limit]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถบันทึกงบประมาณได้");
     await apiFetchAllData();
 }
 
 async function apiDeleteBudget(budgetId) {
-    const res = await fetch(`${API_BASE}/budgets/${budgetId}`, {
+    const res = await queueableFetch(`${API_BASE}/budgets/${budgetId}`, {
         method: "DELETE",
         headers: getAuthHeaders()
-    });
+    }, "apiDeleteBudget", [budgetId]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถลบงบประมาณได้");
     await apiFetchAllData();
 }
@@ -170,30 +260,33 @@ async function apiDeleteBudget(budgetId) {
 // CATEGORIES CRUD ACTIONS
 // ----------------------------------------------------
 async function apiCreateCategory(name, tx_type, icon, color) {
-    const res = await fetch(`${API_BASE}/categories`, {
+    const res = await queueableFetch(`${API_BASE}/categories`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify({ name, tx_type, icon, color })
-    });
+    }, "apiCreateCategory", [name, tx_type, icon, color]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถเพิ่มหมวดหมู่ได้");
     await apiFetchAllData();
 }
 
 async function apiUpdateCategory(categoryId, name, tx_type, icon, color) {
-    const res = await fetch(`${API_BASE}/categories/${categoryId}`, {
+    const res = await queueableFetch(`${API_BASE}/categories/${categoryId}`, {
         method: "PUT",
         headers: getJsonHeaders(),
         body: JSON.stringify({ name, tx_type, icon, color })
-    });
+    }, "apiUpdateCategory", [categoryId, name, tx_type, icon, color]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถแก้ไขหมวดหมู่ได้");
     await apiFetchAllData();
 }
 
 async function apiDeleteCategory(categoryId) {
-    const res = await fetch(`${API_BASE}/categories/${categoryId}`, {
+    const res = await queueableFetch(`${API_BASE}/categories/${categoryId}`, {
         method: "DELETE",
         headers: getAuthHeaders()
-    });
+    }, "apiDeleteCategory", [categoryId]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถลบหมวดหมู่ได้");
     await apiFetchAllData();
 }
@@ -202,30 +295,33 @@ async function apiDeleteCategory(categoryId) {
 // QUICK TEMPLATES CRUD ACTIONS
 // ----------------------------------------------------
 async function apiCreateQuickTemplate(label, description, category_key) {
-    const res = await fetch(`${API_BASE}/quick-templates`, {
+    const res = await queueableFetch(`${API_BASE}/quick-templates`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify({ label, description, category_key })
-    });
+    }, "apiCreateQuickTemplate", [label, description, category_key]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถเพิ่มรายการลัดได้");
     await apiFetchAllData();
 }
 
 async function apiUpdateQuickTemplate(templateId, label, description, category_key) {
-    const res = await fetch(`${API_BASE}/quick-templates/${templateId}`, {
+    const res = await queueableFetch(`${API_BASE}/quick-templates/${templateId}`, {
         method: "PUT",
         headers: getJsonHeaders(),
         body: JSON.stringify({ label, description, category_key })
-    });
+    }, "apiUpdateQuickTemplate", [templateId, label, description, category_key]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถแก้ไขรายการลัดได้");
     await apiFetchAllData();
 }
 
 async function apiDeleteQuickTemplate(templateId) {
-    const res = await fetch(`${API_BASE}/quick-templates/${templateId}`, {
+    const res = await queueableFetch(`${API_BASE}/quick-templates/${templateId}`, {
         method: "DELETE",
         headers: getAuthHeaders()
-    });
+    }, "apiDeleteQuickTemplate", [templateId]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถลบรายการลัดได้");
     await apiFetchAllData();
 }
@@ -456,8 +552,42 @@ async function apiFetchAllData() {
             }))
         ];
 
+        // Successful pull — mirror it into IndexedDB so the app has real
+        // data to boot from next time there's no network at all, and so a
+        // second device's changes show up here once they're re-fetched.
+        await dbSaveCache({
+            wallets: state.wallets,
+            creditCards: state.creditCards,
+            recurringPayments: state.recurringPayments,
+            debtors: state.debtors,
+            transactions: state.transactions,
+            dismissedNotifications: state.dismissedNotifications,
+            budgets: state.budgets,
+            currentUser: state.currentUser,
+            categories: CATEGORIES,
+            quickTemplates: QUICK_TEMPLATES
+        });
+        await dbSetMeta("lastSyncAt", new Date().toISOString());
+
     } catch (e) {
         console.error("Failed to sync application data", e);
+        // Offline (or the server is unreachable) — fall back to whatever we
+        // last cached so the app still shows real data instead of a blank
+        // screen. Any edits made from here on queue in IndexedDB and replay
+        // once syncPendingOps() can reach the server again.
+        const cached = await dbLoadCache();
+        if (cached.wallets) {
+            state.wallets = cached.wallets;
+            state.creditCards = cached.creditCards || [];
+            state.recurringPayments = cached.recurringPayments || [];
+            state.debtors = cached.debtors || [];
+            state.transactions = cached.transactions || [];
+            state.dismissedNotifications = cached.dismissedNotifications || [];
+            state.budgets = cached.budgets || [];
+            state.currentUser = cached.currentUser || state.currentUser;
+            CATEGORIES = cached.categories || {};
+            QUICK_TEMPLATES = cached.quickTemplates || QUICK_TEMPLATES;
+        }
     }
 }
 
@@ -465,30 +595,33 @@ async function apiFetchAllData() {
 // WALLETS CRUD ACTIONS
 // ----------------------------------------------------
 async function apiCreateWallet(wallet_name, wallet_type, balance) {
-    const res = await fetch(`${API_BASE}/wallets`, {
+    const res = await queueableFetch(`${API_BASE}/wallets`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify({ wallet_name, wallet_type, balance: Number(balance) })
-    });
+    }, "apiCreateWallet", [wallet_name, wallet_type, balance]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถสร้างบัญชีได้");
     await apiFetchAllData();
 }
 
 async function apiUpdateWallet(walletId, wallet_name, wallet_type, balance) {
-    const res = await fetch(`${API_BASE}/wallets/${walletId}`, {
+    const res = await queueableFetch(`${API_BASE}/wallets/${walletId}`, {
         method: "PUT",
         headers: getJsonHeaders(),
         body: JSON.stringify({ wallet_name, wallet_type, balance: Number(balance) })
-    });
+    }, "apiUpdateWallet", [walletId, wallet_name, wallet_type, balance]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถแก้ไขบัญชีได้");
     await apiFetchAllData();
 }
 
 async function apiDeleteWallet(walletId) {
-    const res = await fetch(`${API_BASE}/wallets/${walletId}`, {
+    const res = await queueableFetch(`${API_BASE}/wallets/${walletId}`, {
         method: "DELETE",
         headers: getAuthHeaders()
-    });
+    }, "apiDeleteWallet", [walletId]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถลบบัญชีได้");
     await apiFetchAllData();
 }
@@ -497,7 +630,7 @@ async function apiDeleteWallet(walletId) {
 // CREDIT CARD CRUD ACTIONS
 // ----------------------------------------------------
 async function apiCreateCreditCard(card_name, billing_cycle_day, due_day, credit_limit, current_balance) {
-    const res = await fetch(`${API_BASE}/credit-cards`, {
+    const res = await queueableFetch(`${API_BASE}/credit-cards`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify({
@@ -507,13 +640,14 @@ async function apiCreateCreditCard(card_name, billing_cycle_day, due_day, credit
             credit_limit: Number(credit_limit),
             current_balance: Number(current_balance)
         })
-    });
+    }, "apiCreateCreditCard", [card_name, billing_cycle_day, due_day, credit_limit, current_balance]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถเพิ่มบัตรเครดิตได้");
     await apiFetchAllData();
 }
 
 async function apiUpdateCreditCard(cardId, card_name, billing_cycle_day, due_day, credit_limit, current_balance) {
-    const res = await fetch(`${API_BASE}/credit-cards/${cardId}`, {
+    const res = await queueableFetch(`${API_BASE}/credit-cards/${cardId}`, {
         method: "PUT",
         headers: getJsonHeaders(),
         body: JSON.stringify({
@@ -523,16 +657,18 @@ async function apiUpdateCreditCard(cardId, card_name, billing_cycle_day, due_day
             credit_limit: Number(credit_limit),
             current_balance: Number(current_balance)
         })
-    });
+    }, "apiUpdateCreditCard", [cardId, card_name, billing_cycle_day, due_day, credit_limit, current_balance]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถแก้ไขบัตรเครดิตได้");
     await apiFetchAllData();
 }
 
 async function apiDeleteCreditCard(cardId) {
-    const res = await fetch(`${API_BASE}/credit-cards/${cardId}`, {
+    const res = await queueableFetch(`${API_BASE}/credit-cards/${cardId}`, {
         method: "DELETE",
         headers: getAuthHeaders()
-    });
+    }, "apiDeleteCreditCard", [cardId]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถลบบัตรเครดิตได้");
     await apiFetchAllData();
 }
@@ -541,12 +677,13 @@ async function apiPayCreditCard(cardId, walletId, amount) {
     const cleanedCardId = cleanUUID(cardId);
     const cleanedWalletId = cleanUUID(walletId);
     if (!cleanedCardId) throw new Error("Invalid Card ID");
-    
-    const res = await fetch(`${API_BASE}/credit-cards/${cleanedCardId}/pay`, {
+
+    const res = await queueableFetch(`${API_BASE}/credit-cards/${cleanedCardId}/pay`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify({ wallet_id: cleanedWalletId, amount: Number(amount) })
-    });
+    }, "apiPayCreditCard", [cardId, walletId, amount]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) {
         const err = await res.json();
         throw new Error(getErrorMessage(err, "ชำระยอดบัตรไม่สำเร็จ"));
@@ -579,12 +716,13 @@ async function apiCreateDebt(debtorId, debtorName, contactInfo, debtType, cardId
     if (cleanedCardId) payload.credit_card_id = cleanedCardId;
     if (cleanedWalletId) payload.wallet_id = cleanedWalletId;
     
-    const res = await fetch(`${API_BASE}/debtors/debts`, {
+    const res = await queueableFetch(`${API_BASE}/debtors/debts`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify(payload)
-    });
-    
+    }, "apiCreateDebt", [debtorId, debtorName, contactInfo, debtType, cardId, walletId, amount, installments, dueDay, memo]);
+    if (res === OFFLINE_QUEUED) return;
+
     if (!res.ok) {
         const err = await res.json();
         throw new Error(getErrorMessage(err, "ไม่สามารถเพิ่มลูกหนี้/หนี้สินได้"));
@@ -596,13 +734,14 @@ async function apiRepayDebt(debtId, walletId, amount) {
     const cleanedDebtId = cleanUUID(debtId);
     const cleanedWalletId = cleanUUID(walletId);
     if (!cleanedDebtId) throw new Error("Invalid Debt ID");
-    
-    const res = await fetch(`${API_BASE}/debtors/debts/${cleanedDebtId}/repay`, {
+
+    const res = await queueableFetch(`${API_BASE}/debtors/debts/${cleanedDebtId}/repay`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify({ wallet_id: cleanedWalletId, amount: Number(amount) })
-    });
-    
+    }, "apiRepayDebt", [debtId, walletId, amount]);
+    if (res === OFFLINE_QUEUED) return;
+
     if (!res.ok) {
         const err = await res.json();
         throw new Error(getErrorMessage(err, "ชำระคืนหนี้ไม่สำเร็จ"));
@@ -611,19 +750,21 @@ async function apiRepayDebt(debtId, walletId, amount) {
 }
 
 async function apiDeleteDebt(debtId) {
-    const res = await fetch(`${API_BASE}/debtors/debts/${debtId}`, {
+    const res = await queueableFetch(`${API_BASE}/debtors/debts/${debtId}`, {
         method: "DELETE",
         headers: getAuthHeaders()
-    });
+    }, "apiDeleteDebt", [debtId]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถลบรายการหนี้ได้");
     await apiFetchAllData();
 }
 
 async function apiResetDebtCycle(debtId) {
-    const res = await fetch(`${API_BASE}/debtors/debts/${debtId}/reset-cycle`, {
+    const res = await queueableFetch(`${API_BASE}/debtors/debts/${debtId}/reset-cycle`, {
         method: "POST",
         headers: getAuthHeaders()
-    });
+    }, "apiResetDebtCycle", [debtId]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถเริ่มรอบเรียกเก็บเงินรอบใหม่ได้");
     await apiFetchAllData();
 }
@@ -644,12 +785,13 @@ async function apiCreateTransaction(tx_type, description, category, amount, wall
     if (cleanedWalletId) payload.wallet_id = cleanedWalletId;
     if (cleanedCardId) payload.credit_card_id = cleanedCardId;
     
-    const res = await fetch(`${API_BASE}/transactions`, {
+    const res = await queueableFetch(`${API_BASE}/transactions`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify(payload)
-    });
-    
+    }, "apiCreateTransaction", [tx_type, description, category, amount, walletId, creditCardId]);
+    if (res === OFFLINE_QUEUED) return;
+
     if (!res.ok) {
         const err = await res.json();
         throw new Error(getErrorMessage(err, "บันทึกธุรกรรมล้มเหลว"));
@@ -658,10 +800,11 @@ async function apiCreateTransaction(tx_type, description, category, amount, wall
 }
 
 async function apiDeleteTransaction(txId) {
-    const res = await fetch(`${API_BASE}/transactions/${txId}`, {
+    const res = await queueableFetch(`${API_BASE}/transactions/${txId}`, {
         method: "DELETE",
         headers: getAuthHeaders()
-    });
+    }, "apiDeleteTransaction", [txId]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถลบธุรกรรมได้");
     await apiFetchAllData();
 }
@@ -670,20 +813,22 @@ async function apiDeleteTransaction(txId) {
 // RECURRING SUBSCRIPTIONS ACTIONS
 // ----------------------------------------------------
 async function apiCreateRecurring(name, amount, due_day) {
-    const res = await fetch(`${API_BASE}/recurring-payments`, {
+    const res = await queueableFetch(`${API_BASE}/recurring-payments`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify({ name, amount: Number(amount), due_day: Number(due_day) })
-    });
+    }, "apiCreateRecurring", [name, amount, due_day]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถสร้าง Subscription ได้");
     await apiFetchAllData();
 }
 
 async function apiDeleteRecurring(recId) {
-    const res = await fetch(`${API_BASE}/recurring-payments/${recId}`, {
+    const res = await queueableFetch(`${API_BASE}/recurring-payments/${recId}`, {
         method: "DELETE",
         headers: getAuthHeaders()
-    });
+    }, "apiDeleteRecurring", [recId]);
+    if (res === OFFLINE_QUEUED) return;
     if (!res.ok) throw new Error("ไม่สามารถลบ Subscription ได้");
     await apiFetchAllData();
 }
@@ -692,13 +837,14 @@ async function apiPayRecurring(recId, walletId) {
     const cleanedRecId = cleanUUID(recId);
     const cleanedWalletId = cleanUUID(walletId);
     if (!cleanedRecId) throw new Error("Invalid Recurring ID");
-    
-    const res = await fetch(`${API_BASE}/recurring-payments/${cleanedRecId}/pay`, {
+
+    const res = await queueableFetch(`${API_BASE}/recurring-payments/${cleanedRecId}/pay`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify({ wallet_id: cleanedWalletId })
-    });
-    
+    }, "apiPayRecurring", [recId, walletId]);
+    if (res === OFFLINE_QUEUED) return;
+
     if (!res.ok) {
         const err = await res.json();
         throw new Error(getErrorMessage(err, "ชำระค่าบริการรายเดือนล้มเหลว"));

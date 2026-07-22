@@ -21,11 +21,13 @@ def _reconcile_billing_cycle(session: Session, user_id: UUID) -> None:
     stmt = select(RecurringPayment).where(
         RecurringPayment.user_id == user_id,
         RecurringPayment.status == "PAID",
+        RecurringPayment.deleted_at == None,
     )
     changed = False
     for rec in session.exec(stmt).all():
         if rec.last_paid_at and (rec.last_paid_at.year, rec.last_paid_at.month) != (now.year, now.month):
             rec.status = "WAITING"
+            rec.updated_at = now
             session.add(rec)
             changed = True
     if changed:
@@ -55,7 +57,7 @@ def list_recurring(
     session: Session = Depends(get_session)
 ):
     _reconcile_billing_cycle(session, current_user.id)
-    stmt = select(RecurringPayment).where(RecurringPayment.user_id == current_user.id)
+    stmt = select(RecurringPayment).where(RecurringPayment.user_id == current_user.id, RecurringPayment.deleted_at == None)
     return session.exec(stmt).all()
 
 @router.post("", response_model=RecurringResponseSchema, status_code=status.HTTP_201_CREATED)
@@ -82,12 +84,14 @@ def delete_recurring(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    stmt = select(RecurringPayment).where(RecurringPayment.id == rec_id, RecurringPayment.user_id == current_user.id)
+    stmt = select(RecurringPayment).where(RecurringPayment.id == rec_id, RecurringPayment.user_id == current_user.id, RecurringPayment.deleted_at == None)
     rec = session.exec(stmt).first()
     if not rec:
         raise HTTPException(status_code=404, detail="Subscription not found")
-    
-    session.delete(rec)
+
+    rec.deleted_at = datetime.utcnow()
+    rec.updated_at = rec.deleted_at
+    session.add(rec)
     session.commit()
     return
 
@@ -99,28 +103,30 @@ def pay_recurring(
     session: Session = Depends(get_session)
 ):
     # Fetch subscription
-    rec_stmt = select(RecurringPayment).where(RecurringPayment.id == rec_id, RecurringPayment.user_id == current_user.id)
+    rec_stmt = select(RecurringPayment).where(RecurringPayment.id == rec_id, RecurringPayment.user_id == current_user.id, RecurringPayment.deleted_at == None)
     rec = session.exec(rec_stmt).first()
     if not rec:
         raise HTTPException(status_code=404, detail="Subscription not found")
-        
+
     if rec.status == "PAID":
         raise HTTPException(status_code=400, detail="Subscription is already paid for this cycle")
-        
+
     # Fetch wallet
-    wallet_stmt = select(Wallet).where(Wallet.id == data.wallet_id, Wallet.user_id == current_user.id)
+    wallet_stmt = select(Wallet).where(Wallet.id == data.wallet_id, Wallet.user_id == current_user.id, Wallet.deleted_at == None)
     wallet = session.exec(wallet_stmt).first()
     if not wallet:
         raise HTTPException(status_code=404, detail="Selected wallet not found")
-        
+
     if wallet.balance < rec.amount:
         raise HTTPException(status_code=400, detail="Insufficient wallet balance")
-        
+
     # Deduct wallet, set paid
     wallet.balance -= rec.amount
+    wallet.updated_at = datetime.utcnow()
     rec.status = "PAID"
     rec.last_paid_at = datetime.utcnow()
-    
+    rec.updated_at = rec.last_paid_at
+
     # Create transaction
     tx = Transaction(
         user_id=current_user.id,

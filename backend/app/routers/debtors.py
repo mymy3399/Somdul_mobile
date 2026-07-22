@@ -29,6 +29,7 @@ class DebtResponseSchema(BaseModel):
     memo: Optional[str] = None
     status: str
     created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -70,14 +71,14 @@ def list_debtors(
     session: Session = Depends(get_session)
 ):
     # Fetch all debtors belonging to current user
-    stmt = select(Debtor).where(Debtor.user_id == current_user.id)
+    stmt = select(Debtor).where(Debtor.user_id == current_user.id, Debtor.deleted_at == None)
     debtors = session.exec(stmt).all()
-    
+
     # Pre-populate nested debts list
     # SQLModel automatically maps relationships if queried correctly, but we'll build the response structure
     response = []
     for debtor in debtors:
-        debt_stmt = select(Debt).where(Debt.debtor_id == debtor.id).order_by(Debt.created_at.desc())
+        debt_stmt = select(Debt).where(Debt.debtor_id == debtor.id, Debt.deleted_at == None).order_by(Debt.created_at.desc())
         debts = session.exec(debt_stmt).all()
         
         debtor_data = DebtorResponseSchema(
@@ -98,7 +99,7 @@ def create_debtor(
     session: Session = Depends(get_session)
 ):
     # Check if debtor already exists
-    stmt = select(Debtor).where(Debtor.debtor_name == debtor_name, Debtor.user_id == current_user.id)
+    stmt = select(Debtor).where(Debtor.debtor_name == debtor_name, Debtor.user_id == current_user.id, Debtor.deleted_at == None)
     existing = session.exec(stmt).first()
     if existing:
         raise HTTPException(status_code=400, detail="Debtor with this name already exists")
@@ -122,13 +123,13 @@ def create_debt(
     # 1. Resolve Debtor
     debtor = None
     if data.debtor_id:
-        debtor_stmt = select(Debtor).where(Debtor.id == data.debtor_id, Debtor.user_id == current_user.id)
+        debtor_stmt = select(Debtor).where(Debtor.id == data.debtor_id, Debtor.user_id == current_user.id, Debtor.deleted_at == None)
         debtor = session.exec(debtor_stmt).first()
         if not debtor:
             raise HTTPException(status_code=404, detail="Selected debtor not found")
     elif data.debtor_name:
         # Find by name or create
-        debtor_stmt = select(Debtor).where(Debtor.debtor_name == data.debtor_name, Debtor.user_id == current_user.id)
+        debtor_stmt = select(Debtor).where(Debtor.debtor_name == data.debtor_name, Debtor.user_id == current_user.id, Debtor.deleted_at == None)
         debtor = session.exec(debtor_stmt).first()
         if not debtor:
             debtor = Debtor(
@@ -149,21 +150,22 @@ def create_debt(
         if not data.credit_card_id:
             raise HTTPException(status_code=400, detail="credit_card_id is required for CREDIT_CARD_INSTALLMENT")
         
-        card_stmt = select(CreditCard).where(CreditCard.id == data.credit_card_id, CreditCard.user_id == current_user.id)
+        card_stmt = select(CreditCard).where(CreditCard.id == data.credit_card_id, CreditCard.user_id == current_user.id, CreditCard.deleted_at == None)
         card = session.exec(card_stmt).first()
         if not card:
             raise HTTPException(status_code=404, detail="Selected credit card not found")
-            
+
         # Check credit limit
         if card.current_balance + data.total_amount > card.credit_limit:
             # We allow going over credit limit in simulation but warn / throw error depending on strictness.
             # Let's permit it but update card balance.
             pass
-            
+
         # Increase card balance (more outstanding debt to bank)
         card.current_balance += data.total_amount
+        card.updated_at = datetime.utcnow()
         session.add(card)
-        
+
         # Create credit card transaction in history
         card_tx = Transaction(
             user_id=current_user.id,
@@ -175,21 +177,22 @@ def create_debt(
             created_at=datetime.utcnow()
         )
         session.add(card_tx)
-        
+
     elif data.debt_type in ["CASH_LOAN", "INSTALLMENT", "SHARED_SUBSCRIPTION"]:
         # Deduct from user's wallet if wallet_id is provided
         if data.wallet_id:
-            wallet_stmt = select(Wallet).where(Wallet.id == data.wallet_id, Wallet.user_id == current_user.id)
+            wallet_stmt = select(Wallet).where(Wallet.id == data.wallet_id, Wallet.user_id == current_user.id, Wallet.deleted_at == None)
             wallet = session.exec(wallet_stmt).first()
             if not wallet:
                 raise HTTPException(status_code=404, detail="Selected wallet not found")
-            
+
             if wallet.balance < data.total_amount:
                 raise HTTPException(status_code=400, detail="Insufficient wallet balance to lend cash")
-                
+
             wallet.balance -= data.total_amount
+            wallet.updated_at = datetime.utcnow()
             session.add(wallet)
-            
+
             # Create cash transaction in history
             wallet_tx = Transaction(
                 user_id=current_user.id,
@@ -218,7 +221,7 @@ def create_debt(
         status="UNPAID",
         created_at=datetime.utcnow()
     )
-    
+
     session.add(new_debt)
     session.commit()
     session.refresh(new_debt)
@@ -232,22 +235,22 @@ def repay_debt(
     session: Session = Depends(get_session)
 ):
     # Fetch Debt
-    debt_stmt = select(Debt).where(Debt.id == debt_id)
+    debt_stmt = select(Debt).where(Debt.id == debt_id, Debt.deleted_at == None)
     debt = session.exec(debt_stmt).first()
     if not debt:
         raise HTTPException(status_code=404, detail="Debt record not found")
-        
+
     # Fetch Debtor to check owner
-    debtor_stmt = select(Debtor).where(Debtor.id == debt.debtor_id, Debtor.user_id == current_user.id)
+    debtor_stmt = select(Debtor).where(Debtor.id == debt.debtor_id, Debtor.user_id == current_user.id, Debtor.deleted_at == None)
     debtor = session.exec(debtor_stmt).first()
     if not debtor:
         raise HTTPException(status_code=403, detail="Not authorized to access this debt")
-        
+
     if debt.status == "PAID" or debt.remaining_amount <= 0:
         raise HTTPException(status_code=400, detail="Debt is already fully paid")
-        
+
     # Fetch Target Wallet (receives the money)
-    wallet_stmt = select(Wallet).where(Wallet.id == repayment.wallet_id, Wallet.user_id == current_user.id)
+    wallet_stmt = select(Wallet).where(Wallet.id == repayment.wallet_id, Wallet.user_id == current_user.id, Wallet.deleted_at == None)
     wallet = session.exec(wallet_stmt).first()
     if not wallet:
         raise HTTPException(status_code=404, detail="Selected wallet not found")
@@ -260,8 +263,9 @@ def repay_debt(
         
     # Apply money to wallet
     wallet.balance += repayment.amount
+    wallet.updated_at = datetime.utcnow()
     session.add(wallet)
-    
+
     # Deduct debt remaining amount
     debt.remaining_amount -= repayment.amount
 
@@ -280,7 +284,8 @@ def repay_debt(
         debt.status = "PAID"
     else:
         debt.status = "PARTIALLY_PAID"
-        
+
+    debt.updated_at = datetime.utcnow()
     session.add(debt)
     
     # Create audit transaction in ledger
@@ -305,11 +310,13 @@ def delete_debt(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    debt_stmt = select(Debt).join(Debtor).where(Debt.id == debt_id, Debtor.user_id == current_user.id)
+    debt_stmt = select(Debt).join(Debtor).where(Debt.id == debt_id, Debtor.user_id == current_user.id, Debt.deleted_at == None)
     debt = session.exec(debt_stmt).first()
     if not debt:
         raise HTTPException(status_code=404, detail="Debt not found")
-    session.delete(debt)
+    debt.deleted_at = datetime.utcnow()
+    debt.updated_at = debt.deleted_at
+    session.add(debt)
     session.commit()
 
 @router.post("/debts/{debt_id}/reset-cycle")
@@ -318,17 +325,18 @@ def reset_debt_cycle(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    debt_stmt = select(Debt).join(Debtor).where(Debt.id == debt_id, Debtor.user_id == current_user.id)
+    debt_stmt = select(Debt).join(Debtor).where(Debt.id == debt_id, Debtor.user_id == current_user.id, Debt.deleted_at == None)
     debt = session.exec(debt_stmt).first()
     if not debt:
         raise HTTPException(status_code=404, detail="Debt record not found")
-        
+
     if debt.status == "PAID":
         debt.status = "UNPAID"
         debt.remaining_amount = debt.total_amount
     else:
         debt.remaining_amount += debt.total_amount
-        
+
+    debt.updated_at = datetime.utcnow()
     session.add(debt)
     session.commit()
     session.refresh(debt)

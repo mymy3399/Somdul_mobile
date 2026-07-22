@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
@@ -32,7 +33,7 @@ DEFAULT_CATEGORIES = [
 
 
 def ensure_categories_seeded(session: Session, user_id: UUID) -> None:
-    existing = session.exec(select(Category).where(Category.user_id == user_id)).first()
+    existing = session.exec(select(Category).where(Category.user_id == user_id, Category.deleted_at == None)).first()
     if existing:
         return
     for c in DEFAULT_CATEGORIES:
@@ -72,7 +73,7 @@ def list_categories(
     session: Session = Depends(get_session)
 ):
     ensure_categories_seeded(session, current_user.id)
-    stmt = select(Category).where(Category.user_id == current_user.id)
+    stmt = select(Category).where(Category.user_id == current_user.id, Category.deleted_at == None)
     return session.exec(stmt).all()
 
 
@@ -107,7 +108,7 @@ def update_category(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    stmt = select(Category).where(Category.id == category_id, Category.user_id == current_user.id)
+    stmt = select(Category).where(Category.id == category_id, Category.user_id == current_user.id, Category.deleted_at == None)
     category = session.exec(stmt).first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -123,6 +124,7 @@ def update_category(
         category.icon = data.icon
     if data.color is not None:
         category.color = data.color
+    category.updated_at = datetime.utcnow()
 
     session.add(category)
     session.commit()
@@ -136,11 +138,13 @@ def delete_category(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    stmt = select(Category).where(Category.id == category_id, Category.user_id == current_user.id)
+    stmt = select(Category).where(Category.id == category_id, Category.user_id == current_user.id, Category.deleted_at == None)
     category = session.exec(stmt).first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    session.delete(category)
+    category.deleted_at = datetime.utcnow()
+    category.updated_at = category.deleted_at
+    session.add(category)
     session.commit()
     return

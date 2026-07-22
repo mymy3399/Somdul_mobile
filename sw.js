@@ -1,8 +1,9 @@
-const CACHE_NAME = "somdul-shell-v3";
+const CACHE_NAME = "somdul-shell-v4";
 const SHELL_ASSETS = [
     "/",
     "/api.js",
     "/app.js",
+    "/db.js",
     "/manifest.json",
     "/icons/icon-192.png",
     "/icons/icon-512.png"

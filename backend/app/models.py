@@ -36,12 +36,14 @@ class User(SQLModel, table=True):
 # ----------------------------------------------------
 class Wallet(SQLModel, table=True):
     __tablename__ = "wallets"
-    
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     user_id: UUID = Field(foreign_key="users.id", ondelete="CASCADE")
     wallet_name: str = Field(max_length=100)
     wallet_type: str = Field(max_length=50) # CASH, BANK_ACCOUNT, E_WALLET
     balance: Decimal = Field(default=0.00, decimal_places=2, max_digits=15)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    deleted_at: Optional[datetime] = Field(default=None, index=True)
 
     # Relationships
     user: Optional[User] = Relationship(back_populates="wallets")
@@ -61,6 +63,8 @@ class CreditCard(SQLModel, table=True):
     due_day: int = Field(default=1)          # 1-31
     credit_limit: Decimal = Field(decimal_places=2, max_digits=15)
     current_balance: Decimal = Field(default=0.00, decimal_places=2, max_digits=15)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    deleted_at: Optional[datetime] = Field(default=None, index=True)
 
     # Relationships
     user: Optional[User] = Relationship(back_populates="credit_cards")
@@ -78,6 +82,8 @@ class Debtor(SQLModel, table=True):
     user_id: UUID = Field(foreign_key="users.id", ondelete="CASCADE")
     debtor_name: str = Field(max_length=100)
     contact_info: Optional[str] = Field(default=None, max_length=255)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    deleted_at: Optional[datetime] = Field(default=None, index=True)
 
     # Relationships
     user: Optional[User] = Relationship(back_populates="debtors")
@@ -102,6 +108,8 @@ class Debt(SQLModel, table=True):
     memo: Optional[str] = Field(default=None, max_length=255)
     status: str = Field(default="UNPAID") # UNPAID, PARTIALLY_PAID, PAID
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    deleted_at: Optional[datetime] = Field(default=None, index=True)
 
     # Relationships
     debtor: Optional[Debtor] = Relationship(back_populates="debts")
@@ -123,6 +131,8 @@ class Transaction(SQLModel, table=True):
     wallet_id: Optional[UUID] = Field(default=None, foreign_key="wallets.id", ondelete="SET NULL")
     credit_card_id: Optional[UUID] = Field(default=None, foreign_key="credit_cards.id", ondelete="SET NULL")
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    deleted_at: Optional[datetime] = Field(default=None, index=True)
 
     # Relationships
     user: Optional[User] = Relationship(back_populates="transactions")
@@ -143,6 +153,8 @@ class RecurringPayment(SQLModel, table=True):
     due_day: int = Field(default=1) # 1-31
     status: str = Field(default="WAITING") # WAITING, PAID
     last_paid_at: Optional[datetime] = Field(default=None) # used to auto-reset to WAITING on a new billing month
+    updated_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    deleted_at: Optional[datetime] = Field(default=None, index=True)
 
     # Relationships
     user: Optional[User] = Relationship(back_populates="recurring_payments")
@@ -170,6 +182,8 @@ class Budget(SQLModel, table=True):
     user_id: UUID = Field(foreign_key="users.id", ondelete="CASCADE")
     category: str = Field(max_length=50, index=True)
     monthly_limit: Decimal = Field(decimal_places=2, max_digits=15)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    deleted_at: Optional[datetime] = Field(default=None, index=True)
 
 
 # ----------------------------------------------------
@@ -185,6 +199,8 @@ class Category(SQLModel, table=True):
     tx_type: str = Field(max_length=20) # EXPENSE or INCOME
     icon: str = Field(max_length=50, default="fa-tag") # FontAwesome icon suffix, e.g. "fa-utensils"
     color: str = Field(max_length=30, default="slate") # Tailwind color family name, e.g. "amber"
+    updated_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    deleted_at: Optional[datetime] = Field(default=None, index=True)
 
 
 # ----------------------------------------------------
@@ -198,3 +214,5 @@ class QuickTemplate(SQLModel, table=True):
     label: str = Field(max_length=150) # shown in the dropdown, e.g. "🍜 ข้าวกลางวัน/อาหารค่ำ"
     description: str = Field(max_length=150) # filled into the transaction's description field
     category_key: str = Field(max_length=50) # matches Category.key
+    updated_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    deleted_at: Optional[datetime] = Field(default=None, index=True)

@@ -93,6 +93,13 @@ def read_app_js():
         return FileResponse(js_path, headers=NO_CACHE_HEADERS)
     return {"message": "app.js not found."}
 
+@app.get("/db.js")
+def read_db_js():
+    js_path = os.path.join(BASE_DIR, "db.js")
+    if os.path.exists(js_path):
+        return FileResponse(js_path, headers=NO_CACHE_HEADERS)
+    return {"message": "db.js not found."}
+
 @app.get("/manifest.json")
 def read_manifest():
     manifest_path = os.path.join(BASE_DIR, "manifest.json")

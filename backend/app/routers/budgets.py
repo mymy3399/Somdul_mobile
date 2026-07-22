@@ -47,7 +47,7 @@ def list_budgets(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    stmt = select(Budget).where(Budget.user_id == current_user.id)
+    stmt = select(Budget).where(Budget.user_id == current_user.id, Budget.deleted_at == None)
     budgets = session.exec(stmt).all()
     return [
         BudgetResponseSchema(
@@ -67,11 +67,12 @@ def upsert_budget(
     session: Session = Depends(get_session)
 ):
     category = data.category.upper()
-    stmt = select(Budget).where(Budget.user_id == current_user.id, Budget.category == category)
+    stmt = select(Budget).where(Budget.user_id == current_user.id, Budget.category == category, Budget.deleted_at == None)
     budget = session.exec(stmt).first()
 
     if budget:
         budget.monthly_limit = data.monthly_limit
+        budget.updated_at = datetime.utcnow()
     else:
         budget = Budget(user_id=current_user.id, category=category, monthly_limit=data.monthly_limit)
 
@@ -93,11 +94,13 @@ def delete_budget(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    stmt = select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id)
+    stmt = select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id, Budget.deleted_at == None)
     budget = session.exec(stmt).first()
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
 
-    session.delete(budget)
+    budget.deleted_at = datetime.utcnow()
+    budget.updated_at = budget.deleted_at
+    session.add(budget)
     session.commit()
     return

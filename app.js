@@ -61,10 +61,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Load User Profile Session
     const user = await apiFetchMe();
     checkLoginSession();
-    
+
     if (user) {
         await apiFetchAllData();
         refreshAppUI();
+        // Replay anything queued from a previous offline session, then keep
+        // pulling other devices' changes in the background while this tab
+        // stays open (syncPendingOps() itself re-fetches at the end).
+        syncPendingOps().then(refreshAppUI);
+        setInterval(() => {
+            if (navigator.onLine) syncPendingOps().then(refreshAppUI);
+        }, 60000);
     }
 });
 
@@ -81,6 +88,7 @@ function refreshAppUI() {
     renderCreditCards();
     renderRecurring();
     updateNotificationBadge();
+    updateOfflineSyncBadge();
 }
 
 // ----------------------------------------------------
@@ -679,6 +687,31 @@ function updateNotificationBadge() {
         }
     }
 }
+
+// ----------------------------------------------------
+// OFFLINE / SYNC STATUS BADGE
+// ----------------------------------------------------
+async function updateOfflineSyncBadge() {
+    const badge = document.getElementById('offlineSyncBadge');
+    if (!badge) return;
+
+    const pending = await dbPendingCount();
+    if (!navigator.onLine) {
+        badge.textContent = pending > 0 ? `ออฟไลน์ · ค้าง ${pending}` : "ออฟไลน์";
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+    } else if (pending > 0) {
+        badge.textContent = `กำลังซิงก์ ${pending} รายการ`;
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+    } else {
+        badge.classList.add('hidden');
+        badge.classList.remove('flex');
+    }
+}
+
+window.addEventListener('online', updateOfflineSyncBadge);
+window.addEventListener('offline', updateOfflineSyncBadge);
 
 function openNotificationModal() {
     renderNotifications();

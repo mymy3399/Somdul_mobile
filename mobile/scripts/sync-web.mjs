@@ -10,7 +10,7 @@ const mobileDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const repoRoot = dirname(mobileDir);
 const wwwDir = join(mobileDir, "www");
 
-const FILES = ["index.html", "app.js", "api.js", "manifest.json", "sw.js"];
+const FILES = ["index.html", "app.js", "api.js", "db.js", "manifest.json", "sw.js"];
 const DIRS = ["icons"];
 
 rmSync(wwwDir, { recursive: true, force: true });

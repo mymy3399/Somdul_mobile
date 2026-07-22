@@ -64,7 +64,7 @@ def monthly_summary(
         cutoff_year -= 1
     cutoff = datetime(cutoff_year, cutoff_month, 1)
 
-    stmt = select(Transaction).where(Transaction.user_id == current_user.id, Transaction.created_at >= cutoff)
+    stmt = select(Transaction).where(Transaction.user_id == current_user.id, Transaction.created_at >= cutoff, Transaction.deleted_at == None)
     buckets: dict[str, dict[str, Decimal]] = {}
     for tx in session.exec(stmt).all():
         key = f"{tx.created_at.year:04d}-{tx.created_at.month:02d}"
@@ -94,7 +94,7 @@ def export_transactions_csv(
     card_names = {c.id: c.card_name for c in session.exec(select(CreditCard).where(CreditCard.user_id == current_user.id)).all()}
     category_names = {c.key: c.name for c in session.exec(select(Category).where(Category.user_id == current_user.id)).all()}
 
-    stmt = select(Transaction).where(Transaction.user_id == current_user.id).order_by(Transaction.created_at.desc())
+    stmt = select(Transaction).where(Transaction.user_id == current_user.id, Transaction.deleted_at == None).order_by(Transaction.created_at.desc())
     transactions = session.exec(stmt).all()
 
     buffer = io.StringIO()
@@ -131,7 +131,7 @@ def list_transactions(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    stmt = select(Transaction).where(Transaction.user_id == current_user.id).order_by(Transaction.created_at.desc())
+    stmt = select(Transaction).where(Transaction.user_id == current_user.id, Transaction.deleted_at == None).order_by(Transaction.created_at.desc())
     return session.exec(stmt).all()
 
 @router.post("", response_model=TransactionResponseSchema, status_code=status.HTTP_201_CREATED)
@@ -151,11 +151,11 @@ def create_transaction(
     card = None
     
     if data.wallet_id:
-        wallet_stmt = select(Wallet).where(Wallet.id == data.wallet_id, Wallet.user_id == current_user.id)
+        wallet_stmt = select(Wallet).where(Wallet.id == data.wallet_id, Wallet.user_id == current_user.id, Wallet.deleted_at == None)
         wallet = session.exec(wallet_stmt).first()
         if not wallet:
             raise HTTPException(status_code=404, detail="Selected wallet not found")
-            
+
         if data.tx_type == "EXPENSE":
             if wallet.balance < data.amount:
                 # We can block or allow negative balances. Let's block it for safety or allow.
@@ -166,14 +166,15 @@ def create_transaction(
             wallet.balance += data.amount
         else:
             raise HTTPException(status_code=400, detail="Invalid transaction type")
+        wallet.updated_at = datetime.utcnow()
         session.add(wallet)
-        
+
     elif data.credit_card_id:
-        card_stmt = select(CreditCard).where(CreditCard.id == data.credit_card_id, CreditCard.user_id == current_user.id)
+        card_stmt = select(CreditCard).where(CreditCard.id == data.credit_card_id, CreditCard.user_id == current_user.id, CreditCard.deleted_at == None)
         card = session.exec(card_stmt).first()
         if not card:
             raise HTTPException(status_code=404, detail="Selected credit card not found")
-            
+
         if data.tx_type == "EXPENSE":
             card.current_balance += data.amount
         elif data.tx_type == "INCOME":
@@ -182,6 +183,7 @@ def create_transaction(
                 card.current_balance = Decimal("0.00")
         else:
             raise HTTPException(status_code=400, detail="Invalid transaction type")
+        card.updated_at = datetime.utcnow()
         session.add(card)
 
     # Log the transaction
@@ -207,9 +209,11 @@ def delete_transaction(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    tx_stmt = select(Transaction).where(Transaction.id == tx_id, Transaction.user_id == current_user.id)
+    tx_stmt = select(Transaction).where(Transaction.id == tx_id, Transaction.user_id == current_user.id, Transaction.deleted_at == None)
     tx = session.exec(tx_stmt).first()
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
-    session.delete(tx)
+    tx.deleted_at = datetime.utcnow()
+    tx.updated_at = tx.deleted_at
+    session.add(tx)
     session.commit()
