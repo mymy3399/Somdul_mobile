@@ -2,14 +2,19 @@ import calendar
 import logging
 from datetime import date
 
-from sqlmodel import Session, select
+from sqlmodel import Session, create_engine, select
 
 from app.config import settings
-from app.database import engine
 from app.models import CreditCard, Debt, Debtor, RecurringPayment, User
 from app.notifier import send_reminder_email
 
 logger = logging.getLogger("uvicorn.error")
+
+# APScheduler's BackgroundScheduler runs jobs in their own worker thread, not
+# on the asyncio event loop that the rest of the app (database.py's engine,
+# now async) runs on — so this job needs its own plain sync engine rather
+# than sharing the request-handling one.
+_sync_engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
 
 
 def days_until_due(due_day: int, today: date | None = None) -> int:
@@ -81,7 +86,7 @@ def _build_digest_for_user(session: Session, user: User) -> list[str]:
 
 def run_daily_reminder_job() -> None:
     logger.info("[scheduler] Running daily reminder digest job")
-    with Session(engine) as session:
+    with Session(_sync_engine) as session:
         users = session.exec(select(User)).all()
         for user in users:
             items = _build_digest_for_user(session, user)

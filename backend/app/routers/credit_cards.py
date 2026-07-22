@@ -1,7 +1,8 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 from pydantic import BaseModel
 from decimal import Decimal
 from datetime import datetime
@@ -42,18 +43,19 @@ class CardPaymentSchema(BaseModel):
     amount: Decimal
 
 @router.get("", response_model=List[CreditCardResponseSchema])
-def list_credit_cards(
+async def list_credit_cards(
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     statement = select(CreditCard).where(CreditCard.user_id == current_user.id, CreditCard.deleted_at == None)
-    return session.exec(statement).all()
+    result = await session.exec(statement)
+    return result.all()
 
 @router.post("", response_model=CreditCardResponseSchema, status_code=status.HTTP_201_CREATED)
-def create_credit_card(
+async def create_credit_card(
     data: CreditCardCreateSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     new_card = CreditCard(
         user_id=current_user.id,
@@ -64,19 +66,20 @@ def create_credit_card(
         current_balance=data.current_balance
     )
     session.add(new_card)
-    session.commit()
-    session.refresh(new_card)
+    await session.commit()
+    await session.refresh(new_card)
     return new_card
 
 @router.put("/{card_id}", response_model=CreditCardResponseSchema)
-def update_credit_card(
+async def update_credit_card(
     card_id: UUID,
     data: CreditCardUpdateSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     statement = select(CreditCard).where(CreditCard.id == card_id, CreditCard.user_id == current_user.id, CreditCard.deleted_at == None)
-    card = session.exec(statement).first()
+    result = await session.exec(statement)
+    card = result.first()
     if not card:
         raise HTTPException(status_code=404, detail="Credit card not found")
 
@@ -88,52 +91,55 @@ def update_credit_card(
     card.updated_at = datetime.utcnow()
 
     session.add(card)
-    session.commit()
-    session.refresh(card)
+    await session.commit()
+    await session.refresh(card)
     return card
 
 @router.delete("/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_credit_card(
+async def delete_credit_card(
     card_id: UUID,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     statement = select(CreditCard).where(CreditCard.id == card_id, CreditCard.user_id == current_user.id, CreditCard.deleted_at == None)
-    card = session.exec(statement).first()
+    result = await session.exec(statement)
+    card = result.first()
     if not card:
         raise HTTPException(status_code=404, detail="Credit card not found")
 
     card.deleted_at = datetime.utcnow()
     card.updated_at = card.deleted_at
     session.add(card)
-    session.commit()
+    await session.commit()
     return
 
 @router.post("/{card_id}/pay", response_model=CreditCardResponseSchema)
-def pay_credit_card(
+async def pay_credit_card(
     card_id: UUID,
     payment: CardPaymentSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     # Fetch credit card
     card_stmt = select(CreditCard).where(CreditCard.id == card_id, CreditCard.user_id == current_user.id, CreditCard.deleted_at == None)
-    card = session.exec(card_stmt).first()
+    card_result = await session.exec(card_stmt)
+    card = card_result.first()
     if not card:
         raise HTTPException(status_code=404, detail="Credit card not found")
 
     # Fetch wallet
     wallet_stmt = select(Wallet).where(Wallet.id == payment.wallet_id, Wallet.user_id == current_user.id, Wallet.deleted_at == None)
-    wallet = session.exec(wallet_stmt).first()
+    wallet_result = await session.exec(wallet_stmt)
+    wallet = wallet_result.first()
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
-    
+
     if payment.amount <= 0:
         raise HTTPException(status_code=400, detail="Payment amount must be positive")
-        
+
     if wallet.balance < payment.amount:
         raise HTTPException(status_code=400, detail="Insufficient wallet balance")
-        
+
     # Deduct from wallet, subtract from card outstanding balance
     wallet.balance -= payment.amount
     card.current_balance -= payment.amount
@@ -159,6 +165,6 @@ def pay_credit_card(
     session.add(wallet)
     session.add(card)
     session.add(transaction)
-    session.commit()
-    session.refresh(card)
+    await session.commit()
+    await session.refresh(card)
     return card

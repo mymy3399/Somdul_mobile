@@ -28,8 +28,9 @@ app.add_middleware(
 
 # Initialize database tables on startup (if not using Alembic migrations initially)
 @app.on_event("startup")
-def on_startup():
-    SQLModel.metadata.create_all(engine)
+async def on_startup():
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
     if settings.SECRET_KEY == INSECURE_DEFAULT_SECRET_KEY:
         logger.warning(
             "SECRET_KEY is using the built-in insecure default. "

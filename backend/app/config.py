@@ -14,6 +14,18 @@ class Settings(BaseSettings):
         "postgresql://somdul:somdul_pass@127.0.0.1:5434/somdul"
     )
 
+    # SQL query logging — useful while debugging locally, but real overhead
+    # under load (every query serialized + written to stdout), so it's off
+    # unless explicitly requested.
+    SQL_ECHO: bool = os.getenv("SQL_ECHO", "false").lower() == "true"
+
+    # Async engine connection pool (see database.py) — pool_size is the
+    # number of connections kept open permanently; max_overflow is how many
+    # more can be opened temporarily under burst load before new requests
+    # start queueing for a free connection.
+    DB_POOL_SIZE: int = int(os.getenv("DB_POOL_SIZE", "20"))
+    DB_MAX_OVERFLOW: int = int(os.getenv("DB_MAX_OVERFLOW", "20"))
+
     # Email reminders (optional — the daily digest job silently no-ops if
     # these aren't set, since a fresh install has no mail server configured).
     SMTP_HOST: str = os.getenv("SMTP_HOST", "")

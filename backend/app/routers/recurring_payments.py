@@ -1,7 +1,8 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 from pydantic import BaseModel
 from decimal import Decimal
 from datetime import datetime
@@ -13,7 +14,7 @@ from app.security import get_current_user
 router = APIRouter(prefix="/recurring-payments", tags=["Recurring Payments (Subscriptions)"])
 
 
-def _reconcile_billing_cycle(session: Session, user_id: UUID) -> None:
+async def _reconcile_billing_cycle(session: AsyncSession, user_id: UUID) -> None:
     """Flip PAID subscriptions back to WAITING once a new calendar month has
     started since they were last paid, so each subscription reflects its own
     monthly billing cycle instead of staying PAID forever after one payment."""
@@ -23,15 +24,16 @@ def _reconcile_billing_cycle(session: Session, user_id: UUID) -> None:
         RecurringPayment.status == "PAID",
         RecurringPayment.deleted_at == None,
     )
+    result = await session.exec(stmt)
     changed = False
-    for rec in session.exec(stmt).all():
+    for rec in result.all():
         if rec.last_paid_at and (rec.last_paid_at.year, rec.last_paid_at.month) != (now.year, now.month):
             rec.status = "WAITING"
             rec.updated_at = now
             session.add(rec)
             changed = True
     if changed:
-        session.commit()
+        await session.commit()
 
 class RecurringCreateSchema(BaseModel):
     name: str
@@ -52,19 +54,20 @@ class PayRecurringSchema(BaseModel):
     wallet_id: UUID
 
 @router.get("", response_model=List[RecurringResponseSchema])
-def list_recurring(
+async def list_recurring(
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
-    _reconcile_billing_cycle(session, current_user.id)
+    await _reconcile_billing_cycle(session, current_user.id)
     stmt = select(RecurringPayment).where(RecurringPayment.user_id == current_user.id, RecurringPayment.deleted_at == None)
-    return session.exec(stmt).all()
+    result = await session.exec(stmt)
+    return result.all()
 
 @router.post("", response_model=RecurringResponseSchema, status_code=status.HTTP_201_CREATED)
-def create_recurring(
+async def create_recurring(
     data: RecurringCreateSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     new_rec = RecurringPayment(
         user_id=current_user.id,
@@ -74,37 +77,39 @@ def create_recurring(
         status="WAITING"
     )
     session.add(new_rec)
-    session.commit()
-    session.refresh(new_rec)
+    await session.commit()
+    await session.refresh(new_rec)
     return new_rec
 
 @router.delete("/{rec_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_recurring(
+async def delete_recurring(
     rec_id: UUID,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     stmt = select(RecurringPayment).where(RecurringPayment.id == rec_id, RecurringPayment.user_id == current_user.id, RecurringPayment.deleted_at == None)
-    rec = session.exec(stmt).first()
+    result = await session.exec(stmt)
+    rec = result.first()
     if not rec:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
     rec.deleted_at = datetime.utcnow()
     rec.updated_at = rec.deleted_at
     session.add(rec)
-    session.commit()
+    await session.commit()
     return
 
 @router.post("/{rec_id}/pay", response_model=RecurringResponseSchema)
-def pay_recurring(
+async def pay_recurring(
     rec_id: UUID,
     data: PayRecurringSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     # Fetch subscription
     rec_stmt = select(RecurringPayment).where(RecurringPayment.id == rec_id, RecurringPayment.user_id == current_user.id, RecurringPayment.deleted_at == None)
-    rec = session.exec(rec_stmt).first()
+    rec_result = await session.exec(rec_stmt)
+    rec = rec_result.first()
     if not rec:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
@@ -113,7 +118,8 @@ def pay_recurring(
 
     # Fetch wallet
     wallet_stmt = select(Wallet).where(Wallet.id == data.wallet_id, Wallet.user_id == current_user.id, Wallet.deleted_at == None)
-    wallet = session.exec(wallet_stmt).first()
+    wallet_result = await session.exec(wallet_stmt)
+    wallet = wallet_result.first()
     if not wallet:
         raise HTTPException(status_code=404, detail="Selected wallet not found")
 
@@ -137,10 +143,10 @@ def pay_recurring(
         wallet_id=wallet.id,
         created_at=datetime.utcnow()
     )
-    
+
     session.add(wallet)
     session.add(rec)
     session.add(tx)
-    session.commit()
-    session.refresh(rec)
+    await session.commit()
+    await session.refresh(rec)
     return rec

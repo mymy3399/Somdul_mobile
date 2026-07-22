@@ -7,7 +7,7 @@ import pathlib
 TEST_DB_PATH = pathlib.Path(__file__).parent / "test_somdul.db"
 if TEST_DB_PATH.exists():
     TEST_DB_PATH.unlink()
-os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
+os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"  # database.py rewrites this to the async sqlite+aiosqlite driver
 
 import pytest
 from fastapi.testclient import TestClient

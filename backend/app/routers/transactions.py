@@ -4,7 +4,8 @@ from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 from pydantic import BaseModel
 from decimal import Decimal
 from datetime import datetime
@@ -49,10 +50,10 @@ class MonthlySummarySchema(BaseModel):
 # ----------------------------------------------------
 
 @router.get("/summary/monthly", response_model=List[MonthlySummarySchema])
-def monthly_summary(
+async def monthly_summary(
     months: int = 6,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     """Income/expense totals for each of the last `months` calendar months,
     aggregated in Python rather than a DB-specific date_trunc so this works
@@ -65,37 +66,42 @@ def monthly_summary(
     cutoff = datetime(cutoff_year, cutoff_month, 1)
 
     stmt = select(Transaction).where(Transaction.user_id == current_user.id, Transaction.created_at >= cutoff, Transaction.deleted_at == None)
+    result = await session.exec(stmt)
     buckets: dict[str, dict[str, Decimal]] = {}
-    for tx in session.exec(stmt).all():
+    for tx in result.all():
         key = f"{tx.created_at.year:04d}-{tx.created_at.month:02d}"
         bucket = buckets.setdefault(key, {"income": Decimal("0"), "expense": Decimal("0")})
         if tx.tx_type in ("INCOME", "EXPENSE"):
             bucket[tx.tx_type.lower()] += tx.amount
 
-    result = []
+    monthly_result = []
     y, m = cutoff_year, cutoff_month
     for _ in range(months):
         key = f"{y:04d}-{m:02d}"
         bucket = buckets.get(key, {"income": Decimal("0"), "expense": Decimal("0")})
-        result.append(MonthlySummarySchema(month=key, income=bucket["income"], expense=bucket["expense"]))
+        monthly_result.append(MonthlySummarySchema(month=key, income=bucket["income"], expense=bucket["expense"]))
         m += 1
         if m > 12:
             m = 1
             y += 1
-    return result
+    return monthly_result
 
 
 @router.get("/export")
-def export_transactions_csv(
+async def export_transactions_csv(
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
-    wallet_names = {w.id: w.wallet_name for w in session.exec(select(Wallet).where(Wallet.user_id == current_user.id)).all()}
-    card_names = {c.id: c.card_name for c in session.exec(select(CreditCard).where(CreditCard.user_id == current_user.id)).all()}
-    category_names = {c.key: c.name for c in session.exec(select(Category).where(Category.user_id == current_user.id)).all()}
+    wallets_result = await session.exec(select(Wallet).where(Wallet.user_id == current_user.id))
+    wallet_names = {w.id: w.wallet_name for w in wallets_result.all()}
+    cards_result = await session.exec(select(CreditCard).where(CreditCard.user_id == current_user.id))
+    card_names = {c.id: c.card_name for c in cards_result.all()}
+    categories_result = await session.exec(select(Category).where(Category.user_id == current_user.id))
+    category_names = {c.key: c.name for c in categories_result.all()}
 
     stmt = select(Transaction).where(Transaction.user_id == current_user.id, Transaction.deleted_at == None).order_by(Transaction.created_at.desc())
-    transactions = session.exec(stmt).all()
+    tx_result = await session.exec(stmt)
+    transactions = tx_result.all()
 
     buffer = io.StringIO()
     buffer.write("﻿")  # UTF-8 BOM so Excel renders Thai text correctly
@@ -127,32 +133,34 @@ def export_transactions_csv(
     )
 
 @router.get("", response_model=List[TransactionResponseSchema])
-def list_transactions(
+async def list_transactions(
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     stmt = select(Transaction).where(Transaction.user_id == current_user.id, Transaction.deleted_at == None).order_by(Transaction.created_at.desc())
-    return session.exec(stmt).all()
+    result = await session.exec(stmt)
+    return result.all()
 
 @router.post("", response_model=TransactionResponseSchema, status_code=status.HTTP_201_CREATED)
-def create_transaction(
+async def create_transaction(
     data: TransactionCreateSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     if data.amount <= 0:
         raise HTTPException(status_code=400, detail="Transaction amount must be positive")
-        
+
     if not data.wallet_id and not data.credit_card_id:
         raise HTTPException(status_code=400, detail="Either wallet_id or credit_card_id must be provided")
 
     # Resolve wallet/credit_card and apply balances
     wallet = None
     card = None
-    
+
     if data.wallet_id:
         wallet_stmt = select(Wallet).where(Wallet.id == data.wallet_id, Wallet.user_id == current_user.id, Wallet.deleted_at == None)
-        wallet = session.exec(wallet_stmt).first()
+        wallet_result = await session.exec(wallet_stmt)
+        wallet = wallet_result.first()
         if not wallet:
             raise HTTPException(status_code=404, detail="Selected wallet not found")
 
@@ -171,7 +179,8 @@ def create_transaction(
 
     elif data.credit_card_id:
         card_stmt = select(CreditCard).where(CreditCard.id == data.credit_card_id, CreditCard.user_id == current_user.id, CreditCard.deleted_at == None)
-        card = session.exec(card_stmt).first()
+        card_result = await session.exec(card_stmt)
+        card = card_result.first()
         if not card:
             raise HTTPException(status_code=404, detail="Selected credit card not found")
 
@@ -197,23 +206,24 @@ def create_transaction(
         credit_card_id=data.credit_card_id,
         created_at=datetime.utcnow()
     )
-    
+
     session.add(new_tx)
-    session.commit()
-    session.refresh(new_tx)
+    await session.commit()
+    await session.refresh(new_tx)
     return new_tx
 
 @router.delete("/{tx_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_transaction(
+async def delete_transaction(
     tx_id: UUID,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     tx_stmt = select(Transaction).where(Transaction.id == tx_id, Transaction.user_id == current_user.id, Transaction.deleted_at == None)
-    tx = session.exec(tx_stmt).first()
+    tx_result = await session.exec(tx_stmt)
+    tx = tx_result.first()
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
     tx.deleted_at = datetime.utcnow()
     tx.updated_at = tx.deleted_at
     session.add(tx)
-    session.commit()
+    await session.commit()

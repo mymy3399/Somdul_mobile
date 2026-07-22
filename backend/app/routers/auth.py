@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
@@ -81,19 +82,20 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(data: RegisterSchema, session: Session = Depends(get_session), _rl=Depends(register_rate_limit)):
+async def register(data: RegisterSchema, session: AsyncSession = Depends(get_session), _rl=Depends(register_rate_limit)):
     # Validate password strength
     validate_password_strength(data.password)
-    
+
     # Check if user already exists
     statement = select(User).where(User.email == data.email.lower())
-    existing_user = session.exec(statement).first()
+    result = await session.exec(statement)
+    existing_user = result.first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
+
     # Create new user
     new_user = User(
         name=data.name,
@@ -101,24 +103,25 @@ def register(data: RegisterSchema, session: Session = Depends(get_session), _rl=
         hashed_password=get_password_hash(data.password)
     )
     session.add(new_user)
-    session.commit()
-    session.refresh(new_user)
+    await session.commit()
+    await session.refresh(new_user)
     return _user_response(new_user)
 
 @router.post("/login", response_model=TokenResponse)
-def login(
+async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     _rl=Depends(login_rate_limit)
 ):
     statement = select(User).where(User.email == form_data.username.lower())
-    user = session.exec(statement).first()
+    result = await session.exec(statement)
+    user = result.first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect email or password"
         )
-    
+
     # Create JWT access token
     access_token = create_access_token(data={"sub": user.email})
     return TokenResponse(
@@ -128,14 +131,14 @@ def login(
     )
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(current_user: User = Depends(get_current_user)):
     return _user_response(current_user)
 
 @router.put("/profile", response_model=UserResponse)
-def update_profile(
+async def update_profile(
     data: UpdateProfileSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     if data.name is not None:
         name_val = data.name.strip()
@@ -145,12 +148,13 @@ def update_profile(
                 detail="Name cannot be empty"
             )
         current_user.name = name_val
-    
+
     if data.email is not None:
         email_lower = data.email.lower().strip()
         if email_lower != current_user.email:
             stmt = select(User).where(User.email == email_lower)
-            existing_user = session.exec(stmt).first()
+            result = await session.exec(stmt)
+            existing_user = result.first()
             if existing_user:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -159,15 +163,15 @@ def update_profile(
             current_user.email = email_lower
 
     session.add(current_user)
-    session.commit()
-    session.refresh(current_user)
+    await session.commit()
+    await session.refresh(current_user)
     return _user_response(current_user)
 
 @router.put("/promptpay", response_model=UserResponse)
-def update_promptpay(
+async def update_promptpay(
     data: PromptPayUpdateSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     if data.promptpay_qr_data is not None:
         if data.promptpay_qr_data and not data.promptpay_qr_data.startswith("data:image/"):
@@ -180,26 +184,26 @@ def update_promptpay(
         current_user.promptpay_account = data.promptpay_account.strip() or None
 
     session.add(current_user)
-    session.commit()
-    session.refresh(current_user)
+    await session.commit()
+    await session.refresh(current_user)
     return _user_response(current_user)
 
 @router.put("/password")
-def change_password(
+async def change_password(
     data: ChangePasswordSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     if not verify_password(data.old_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect old password"
         )
-    
+
     # Validate new password strength
     validate_password_strength(data.new_password)
-    
+
     current_user.hashed_password = get_password_hash(data.new_password)
     session.add(current_user)
-    session.commit()
+    await session.commit()
     return {"status": "success", "message": "Password updated successfully"}

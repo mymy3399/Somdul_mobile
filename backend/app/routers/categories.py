@@ -5,7 +5,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
 from app.models import Category, User
@@ -32,13 +33,14 @@ DEFAULT_CATEGORIES = [
 ]
 
 
-def ensure_categories_seeded(session: Session, user_id: UUID) -> None:
-    existing = session.exec(select(Category).where(Category.user_id == user_id, Category.deleted_at == None)).first()
+async def ensure_categories_seeded(session: AsyncSession, user_id: UUID) -> None:
+    result = await session.exec(select(Category).where(Category.user_id == user_id, Category.deleted_at == None))
+    existing = result.first()
     if existing:
         return
     for c in DEFAULT_CATEGORIES:
         session.add(Category(user_id=user_id, **c))
-    session.commit()
+    await session.commit()
 
 
 class CategoryCreateSchema(BaseModel):
@@ -68,25 +70,26 @@ class CategoryResponseSchema(BaseModel):
 
 
 @router.get("", response_model=List[CategoryResponseSchema])
-def list_categories(
+async def list_categories(
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
-    ensure_categories_seeded(session, current_user.id)
+    await ensure_categories_seeded(session, current_user.id)
     stmt = select(Category).where(Category.user_id == current_user.id, Category.deleted_at == None)
-    return session.exec(stmt).all()
+    result = await session.exec(stmt)
+    return result.all()
 
 
 @router.post("", response_model=CategoryResponseSchema, status_code=status.HTTP_201_CREATED)
-def create_category(
+async def create_category(
     data: CategoryCreateSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     if data.tx_type not in ("EXPENSE", "INCOME"):
         raise HTTPException(status_code=400, detail="tx_type must be EXPENSE or INCOME")
 
-    ensure_categories_seeded(session, current_user.id)
+    await ensure_categories_seeded(session, current_user.id)
     category = Category(
         user_id=current_user.id,
         key=f"CUSTOM_{uuid.uuid4().hex[:8].upper()}",
@@ -96,20 +99,21 @@ def create_category(
         color=data.color,
     )
     session.add(category)
-    session.commit()
-    session.refresh(category)
+    await session.commit()
+    await session.refresh(category)
     return category
 
 
 @router.put("/{category_id}", response_model=CategoryResponseSchema)
-def update_category(
+async def update_category(
     category_id: UUID,
     data: CategoryUpdateSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     stmt = select(Category).where(Category.id == category_id, Category.user_id == current_user.id, Category.deleted_at == None)
-    category = session.exec(stmt).first()
+    result = await session.exec(stmt)
+    category = result.first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
@@ -127,24 +131,25 @@ def update_category(
     category.updated_at = datetime.utcnow()
 
     session.add(category)
-    session.commit()
-    session.refresh(category)
+    await session.commit()
+    await session.refresh(category)
     return category
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_category(
+async def delete_category(
     category_id: UUID,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     stmt = select(Category).where(Category.id == category_id, Category.user_id == current_user.id, Category.deleted_at == None)
-    category = session.exec(stmt).first()
+    result = await session.exec(stmt)
+    category = result.first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
     category.deleted_at = datetime.utcnow()
     category.updated_at = category.deleted_at
     session.add(category)
-    session.commit()
+    await session.commit()
     return

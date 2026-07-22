@@ -4,7 +4,8 @@ from jose import JWTError, jwt
 import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import settings
 from app.database import get_session
@@ -37,9 +38,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-def get_current_user(
+async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ) -> User:
     """Dependency to retrieve the authenticated user from a JWT token."""
     credentials_exception = HTTPException(
@@ -54,10 +55,11 @@ def get_current_user(
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    
+
     statement = select(User).where(User.email == email)
-    user = session.exec(statement).first()
+    result = await session.exec(statement)
+    user = result.first()
     if user is None:
         raise credentials_exception
-    
+
     return user

@@ -4,7 +4,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
 from app.models import QuickTemplate, User
@@ -37,13 +38,14 @@ DEFAULT_QUICK_TEMPLATES = [
 ]
 
 
-def _ensure_templates_seeded(session: Session, user_id: UUID) -> None:
-    existing = session.exec(select(QuickTemplate).where(QuickTemplate.user_id == user_id, QuickTemplate.deleted_at == None)).first()
+async def _ensure_templates_seeded(session: AsyncSession, user_id: UUID) -> None:
+    result = await session.exec(select(QuickTemplate).where(QuickTemplate.user_id == user_id, QuickTemplate.deleted_at == None))
+    existing = result.first()
     if existing:
         return
     for t in DEFAULT_QUICK_TEMPLATES:
         session.add(QuickTemplate(user_id=user_id, **t))
-    session.commit()
+    await session.commit()
 
 
 class QuickTemplateCreateSchema(BaseModel):
@@ -69,23 +71,24 @@ class QuickTemplateResponseSchema(BaseModel):
 
 
 @router.get("", response_model=List[QuickTemplateResponseSchema])
-def list_quick_templates(
+async def list_quick_templates(
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
-    ensure_categories_seeded(session, current_user.id)  # so category_key options exist for new users
-    _ensure_templates_seeded(session, current_user.id)
+    await ensure_categories_seeded(session, current_user.id)  # so category_key options exist for new users
+    await _ensure_templates_seeded(session, current_user.id)
     stmt = select(QuickTemplate).where(QuickTemplate.user_id == current_user.id, QuickTemplate.deleted_at == None)
-    return session.exec(stmt).all()
+    result = await session.exec(stmt)
+    return result.all()
 
 
 @router.post("", response_model=QuickTemplateResponseSchema, status_code=status.HTTP_201_CREATED)
-def create_quick_template(
+async def create_quick_template(
     data: QuickTemplateCreateSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
-    _ensure_templates_seeded(session, current_user.id)
+    await _ensure_templates_seeded(session, current_user.id)
     template = QuickTemplate(
         user_id=current_user.id,
         label=data.label,
@@ -93,20 +96,21 @@ def create_quick_template(
         category_key=data.category_key,
     )
     session.add(template)
-    session.commit()
-    session.refresh(template)
+    await session.commit()
+    await session.refresh(template)
     return template
 
 
 @router.put("/{template_id}", response_model=QuickTemplateResponseSchema)
-def update_quick_template(
+async def update_quick_template(
     template_id: UUID,
     data: QuickTemplateUpdateSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     stmt = select(QuickTemplate).where(QuickTemplate.id == template_id, QuickTemplate.user_id == current_user.id, QuickTemplate.deleted_at == None)
-    template = session.exec(stmt).first()
+    result = await session.exec(stmt)
+    template = result.first()
     if not template:
         raise HTTPException(status_code=404, detail="Quick template not found")
 
@@ -119,24 +123,25 @@ def update_quick_template(
     template.updated_at = datetime.utcnow()
 
     session.add(template)
-    session.commit()
-    session.refresh(template)
+    await session.commit()
+    await session.refresh(template)
     return template
 
 
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_quick_template(
+async def delete_quick_template(
     template_id: UUID,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     stmt = select(QuickTemplate).where(QuickTemplate.id == template_id, QuickTemplate.user_id == current_user.id, QuickTemplate.deleted_at == None)
-    template = session.exec(stmt).first()
+    result = await session.exec(stmt)
+    template = result.first()
     if not template:
         raise HTTPException(status_code=404, detail="Quick template not found")
 
     template.deleted_at = datetime.utcnow()
     template.updated_at = template.deleted_at
     session.add(template)
-    session.commit()
+    await session.commit()
     return

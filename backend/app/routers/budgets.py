@@ -6,7 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import func
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
 from app.models import Budget, Transaction, User
@@ -30,7 +31,7 @@ class BudgetResponseSchema(BaseModel):
         from_attributes = True
 
 
-def _spent_this_month(session: Session, user_id: UUID, category: str) -> Decimal:
+async def _spent_this_month(session: AsyncSession, user_id: UUID, category: str) -> Decimal:
     now = datetime.utcnow()
     month_start = datetime(now.year, now.month, 1)
     stmt = select(func.coalesce(func.sum(Transaction.amount), 0)).where(
@@ -39,36 +40,39 @@ def _spent_this_month(session: Session, user_id: UUID, category: str) -> Decimal
         Transaction.tx_type == "EXPENSE",
         Transaction.created_at >= month_start,
     )
-    return session.exec(stmt).one()
+    result = await session.exec(stmt)
+    return result.one()
 
 
 @router.get("", response_model=List[BudgetResponseSchema])
-def list_budgets(
+async def list_budgets(
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     stmt = select(Budget).where(Budget.user_id == current_user.id, Budget.deleted_at == None)
-    budgets = session.exec(stmt).all()
-    return [
-        BudgetResponseSchema(
+    result = await session.exec(stmt)
+    budgets = result.all()
+    response = []
+    for b in budgets:
+        response.append(BudgetResponseSchema(
             id=b.id,
             category=b.category,
             monthly_limit=b.monthly_limit,
-            spent_this_month=_spent_this_month(session, current_user.id, b.category),
-        )
-        for b in budgets
-    ]
+            spent_this_month=await _spent_this_month(session, current_user.id, b.category),
+        ))
+    return response
 
 
 @router.post("", response_model=BudgetResponseSchema, status_code=status.HTTP_201_CREATED)
-def upsert_budget(
+async def upsert_budget(
     data: BudgetUpsertSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     category = data.category.upper()
     stmt = select(Budget).where(Budget.user_id == current_user.id, Budget.category == category, Budget.deleted_at == None)
-    budget = session.exec(stmt).first()
+    result = await session.exec(stmt)
+    budget = result.first()
 
     if budget:
         budget.monthly_limit = data.monthly_limit
@@ -77,30 +81,31 @@ def upsert_budget(
         budget = Budget(user_id=current_user.id, category=category, monthly_limit=data.monthly_limit)
 
     session.add(budget)
-    session.commit()
-    session.refresh(budget)
+    await session.commit()
+    await session.refresh(budget)
 
     return BudgetResponseSchema(
         id=budget.id,
         category=budget.category,
         monthly_limit=budget.monthly_limit,
-        spent_this_month=_spent_this_month(session, current_user.id, budget.category),
+        spent_this_month=await _spent_this_month(session, current_user.id, budget.category),
     )
 
 
 @router.delete("/{budget_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_budget(
+async def delete_budget(
     budget_id: UUID,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     stmt = select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id, Budget.deleted_at == None)
-    budget = session.exec(stmt).first()
+    result = await session.exec(stmt)
+    budget = result.first()
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
 
     budget.deleted_at = datetime.utcnow()
     budget.updated_at = budget.deleted_at
     session.add(budget)
-    session.commit()
+    await session.commit()
     return

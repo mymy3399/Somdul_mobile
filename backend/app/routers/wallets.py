@@ -2,7 +2,8 @@ from datetime import datetime
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 from pydantic import BaseModel
 from decimal import Decimal
 
@@ -32,18 +33,19 @@ class WalletResponseSchema(BaseModel):
         from_attributes = True
 
 @router.get("", response_model=List[WalletResponseSchema])
-def list_wallets(
+async def list_wallets(
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     statement = select(Wallet).where(Wallet.user_id == current_user.id, Wallet.deleted_at == None)
-    return session.exec(statement).all()
+    result = await session.exec(statement)
+    return result.all()
 
 @router.post("", response_model=WalletResponseSchema, status_code=status.HTTP_201_CREATED)
-def create_wallet(
+async def create_wallet(
     data: WalletCreateSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     new_wallet = Wallet(
         user_id=current_user.id,
@@ -52,19 +54,20 @@ def create_wallet(
         balance=data.balance
     )
     session.add(new_wallet)
-    session.commit()
-    session.refresh(new_wallet)
+    await session.commit()
+    await session.refresh(new_wallet)
     return new_wallet
 
 @router.put("/{wallet_id}", response_model=WalletResponseSchema)
-def update_wallet(
+async def update_wallet(
     wallet_id: UUID,
     data: WalletUpdateSchema,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     statement = select(Wallet).where(Wallet.id == wallet_id, Wallet.user_id == current_user.id, Wallet.deleted_at == None)
-    wallet = session.exec(statement).first()
+    result = await session.exec(statement)
+    wallet = result.first()
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
 
@@ -74,23 +77,24 @@ def update_wallet(
     wallet.updated_at = datetime.utcnow()
 
     session.add(wallet)
-    session.commit()
-    session.refresh(wallet)
+    await session.commit()
+    await session.refresh(wallet)
     return wallet
 
 @router.delete("/{wallet_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_wallet(
+async def delete_wallet(
     wallet_id: UUID,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     statement = select(Wallet).where(Wallet.id == wallet_id, Wallet.user_id == current_user.id, Wallet.deleted_at == None)
-    wallet = session.exec(statement).first()
+    result = await session.exec(statement)
+    wallet = result.first()
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
 
     wallet.deleted_at = datetime.utcnow()
     wallet.updated_at = wallet.deleted_at
     session.add(wallet)
-    session.commit()
+    await session.commit()
     return
