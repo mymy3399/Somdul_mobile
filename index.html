@@ -15,6 +15,18 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Somdul">
 
+    <!-- Applies the saved font-size scale before anything renders — app.js
+         only runs after the whole page is parsed (it's loaded at the end of
+         body), so doing this there instead causes a visible reflow/"jump"
+         once the real scale kicks in after first paint. Keep this key in
+         sync with FONT_SCALE_STORAGE_KEY in app.js. -->
+    <script>
+        (function () {
+            var saved = parseFloat(localStorage.getItem("somdul_font_scale"));
+            document.documentElement.style.fontSize = (!isNaN(saved) ? saved : 112.5) + "%";
+        })();
+    </script>
+
     <!-- Tailwind CSS CDN (Play CDN — intentionally unpinned/no SRI: it's a
          JIT compiler script the Tailwind team updates in place, so pinning
          a content hash here would break styling on their next release) -->
@@ -442,7 +454,7 @@
     </nav>
 
     <!-- LOGIN SCREEN OVERLAY -->
-    <div id="loginScreen" class="fixed inset-0 bg-slate-50 z-[999] flex flex-col justify-center items-center p-4 hidden animate-in fade-in duration-200">
+    <div id="loginScreen" class="fixed inset-0 bg-slate-50 z-[999] flex flex-col justify-center items-center p-4 animate-in fade-in duration-200">
         <div class="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200/70 shadow-xl space-y-6 text-center">
             <div class="flex flex-col items-center gap-2">
                 <div class="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">

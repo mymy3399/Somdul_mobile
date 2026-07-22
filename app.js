@@ -5,9 +5,10 @@
 // ----------------------------------------------------
 // Scales the root font-size, which cascades through every Tailwind text-*
 // (and, since Tailwind's spacing scale is also rem-based, padding/sizing)
-// class app-wide — including markup rendered dynamically by app.js — without
-// needing to touch individual elements. Applied synchronously here, before
-// DOMContentLoaded, so there's no flash of the wrong size on load.
+// class app-wide — including markup rendered dynamically by app.js. The
+// initial application (so there's no flash/reflow on load) lives in an
+// inline <script> in index.html's <head> instead of here, since this file
+// is only fetched/run after the page has already been parsed and painted.
 const FONT_SCALE_STORAGE_KEY = "somdul_font_scale";
 
 function syncFontSizeButtons() {
@@ -25,11 +26,6 @@ function setFontSize(scale) {
     localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(scale));
     syncFontSizeButtons();
 }
-
-(function applySavedFontSize() {
-    const saved = parseFloat(localStorage.getItem(FONT_SCALE_STORAGE_KEY));
-    document.documentElement.style.fontSize = `${!isNaN(saved) ? saved : 112.5}%`;
-})();
 
 // ----------------------------------------------------
 // PWA: SERVICE WORKER REGISTRATION
@@ -98,19 +94,29 @@ let overviewChartInstance = null;
 function renderOverviewChart(totalCash, totalDebts, totalCreditCards, totalRecurring) {
     const ctx = document.getElementById('overviewChart');
     if (!ctx) return;
-    
-    if (overviewChartInstance) {
-        overviewChartInstance.destroy();
-    }
-    
+
     const total = totalCash + totalDebts + totalCreditCards + totalRecurring;
     const dataVals = total === 0 ? [1, 0, 0, 0] : [totalCash, totalDebts, totalCreditCards, totalRecurring];
     const dataColors = total === 0 ? ['#e2e8f0', '#cbd5e1', '#94a3b8', '#64748b'] : ['#10b981', '#6366f1', '#f59e0b', '#ef4444'];
-    
+    const labels = total === 0 ? ['ยังไม่มีข้อมูล'] : ['เงินสดในกระเป๋า', 'ลูกหนี้ค้างชำระ', 'หนี้บัตรเครดิต', 'รายจ่ายรายเดือน'];
+
+    // Update the existing chart in place instead of destroying/recreating it
+    // — this function runs on every refreshAppUI() (every action, every tab
+    // switch, the 60s background sync), and Chart.js replays its full entry
+    // animation on every `new Chart()`, which read as the whole dashboard
+    // "jumping"/reloading constantly rather than just refreshing numbers.
+    if (overviewChartInstance) {
+        overviewChartInstance.data.labels = labels;
+        overviewChartInstance.data.datasets[0].data = dataVals;
+        overviewChartInstance.data.datasets[0].backgroundColor = dataColors;
+        overviewChartInstance.update('none');
+        return;
+    }
+
     overviewChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: total === 0 ? ['ยังไม่มีข้อมูล'] : ['เงินสดในกระเป๋า', 'ลูกหนี้ค้างชำระ', 'หนี้บัตรเครดิต', 'รายจ่ายรายเดือน'],
+            labels,
             datasets: [{
                 data: dataVals,
                 backgroundColor: dataColors,
@@ -136,8 +142,15 @@ function renderOverviewChart(totalCash, totalDebts, totalCreditCards, totalRecur
                 },
                 tooltip: {
                     callbacks: {
+                        // Reads the chart's current data at hover-time rather
+                        // than closing over `total` from creation time, since
+                        // this chart instance is now reused/updated in place
+                        // (see the update('none') branch above) instead of
+                        // being recreated whenever the numbers change.
                         label: function(context) {
-                            if (total === 0) return ' ยังไม่มีข้อมูลในระบบ';
+                            // labels collapses to a single "ยังไม่มีข้อมูล" entry
+                            // exactly when there's nothing to show (see above).
+                            if (context.chart.data.labels.length === 1) return ' ยังไม่มีข้อมูลในระบบ';
                             const value = context.raw || 0;
                             return ` ${context.label}: ฿${value.toLocaleString('th-TH')}`;
                         }
@@ -280,22 +293,31 @@ async function renderMonthlyTrendChart() {
         return;
     }
 
-    if (monthlyTrendChartInstance) {
-        monthlyTrendChartInstance.destroy();
-    }
-
     const labels = state.monthlyTrend.map(m => {
         const [y, mo] = m.month.split('-');
         return `${mo}/${y.slice(2)}`;
     });
+    const income = state.monthlyTrend.map(m => m.income);
+    const expense = state.monthlyTrend.map(m => m.expense);
+
+    // Update in place rather than destroy+recreate, same reasoning as
+    // renderOverviewChart — this tab can be revisited repeatedly and
+    // shouldn't replay the bar-grow-in animation every single time.
+    if (monthlyTrendChartInstance) {
+        monthlyTrendChartInstance.data.labels = labels;
+        monthlyTrendChartInstance.data.datasets[0].data = income;
+        monthlyTrendChartInstance.data.datasets[1].data = expense;
+        monthlyTrendChartInstance.update('none');
+        return;
+    }
 
     monthlyTrendChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels,
             datasets: [
-                { label: 'รายรับ', data: state.monthlyTrend.map(m => m.income), backgroundColor: '#10b981', borderRadius: 4 },
-                { label: 'รายจ่าย', data: state.monthlyTrend.map(m => m.expense), backgroundColor: '#f43f5e', borderRadius: 4 }
+                { label: 'รายรับ', data: income, backgroundColor: '#10b981', borderRadius: 4 },
+                { label: 'รายจ่าย', data: expense, backgroundColor: '#f43f5e', borderRadius: 4 }
             ]
         },
         options: {
