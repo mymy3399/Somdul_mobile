@@ -141,7 +141,7 @@
 
     <!-- Top Navigation -->
     <header class="pt-safe bg-white/90 backdrop-blur-md border-b border-slate-200/70 sticky top-0 z-40 shadow-sm">
-        <div class="max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-3 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
                 <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center text-white shadow-md shadow-emerald-900/20">
                     <i class="fa-solid fa-scale-balanced text-lg"></i>
@@ -170,7 +170,7 @@
     </header>
 
     <!-- Main Content Container -->
-    <main class="max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[1600px] mx-auto w-full px-4 pt-4 flex-1 pb-24 lg:pb-8">
+    <main class="w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pt-4 flex-1 pb-24 lg:pb-8">
 
         <!-- VIEW 1: HOME/DASHBOARD -->
         <div id="view-home" class="space-y-4">
@@ -285,14 +285,24 @@
                 </div>
             </div>
 
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center flex-wrap gap-2">
                 <div class="flex items-baseline gap-2">
                     <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-list-check mr-1.5 text-emerald-500"></i> รายการลูกหนี้</h3>
                     <span class="text-xs text-slate-400" id="debtorCount">ทั้งหมด 0 คน</span>
                 </div>
-                <button onclick="openDebtModal()" class="bg-gradient-to-b from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-semibold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm">
-                    <i class="fa-solid fa-user-plus"></i> ตั้งลูกหนี้ใหม่
-                </button>
+                <div class="flex items-center gap-1.5">
+                    <div class="flex items-center bg-slate-100 rounded-lg p-0.5" role="group" aria-label="สลับมุมมองรายการ">
+                        <button onclick="setViewMode('debtors', 'list', renderDebtors)" id="debtorsViewModeListBtn" class="px-2.5 py-1.5 rounded-md text-xs transition-colors" title="มุมมองรายการ">
+                            <i class="fa-solid fa-list"></i>
+                        </button>
+                        <button onclick="setViewMode('debtors', 'card', renderDebtors)" id="debtorsViewModeCardBtn" class="px-2.5 py-1.5 rounded-md text-xs transition-colors" title="มุมมองการ์ด">
+                            <i class="fa-solid fa-grip"></i>
+                        </button>
+                    </div>
+                    <button onclick="openDebtModal()" class="bg-gradient-to-b from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-semibold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm">
+                        <i class="fa-solid fa-user-plus"></i> ตั้งลูกหนี้ใหม่
+                    </button>
+                </div>
             </div>
 
             <!-- Debtor List Grid -->
@@ -303,11 +313,21 @@
 
         <!-- VIEW 3: CREDIT CARDS -->
         <div id="view-cards" class="space-y-4 hidden">
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center flex-wrap gap-2">
                 <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-credit-card mr-1.5 text-blue-500"></i> บัตรเครดิตและยอดรอตัดชำระ</h3>
-                <button onclick="openCreditCardPaymentModal()" class="bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm">
-                    <i class="fa-regular fa-credit-card"></i> จ่ายบัตรเครดิต
-                </button>
+                <div class="flex items-center gap-1.5">
+                    <div class="flex items-center bg-slate-100 rounded-lg p-0.5" role="group" aria-label="สลับมุมมองรายการ">
+                        <button onclick="setViewMode('cards', 'list', renderCreditCards)" id="cardsViewModeListBtn" class="px-2.5 py-1.5 rounded-md text-xs transition-colors" title="มุมมองรายการ">
+                            <i class="fa-solid fa-list"></i>
+                        </button>
+                        <button onclick="setViewMode('cards', 'card', renderCreditCards)" id="cardsViewModeCardBtn" class="px-2.5 py-1.5 rounded-md text-xs transition-colors" title="มุมมองการ์ด">
+                            <i class="fa-solid fa-grip"></i>
+                        </button>
+                    </div>
+                    <button onclick="openCreditCardPaymentModal()" class="bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm">
+                        <i class="fa-regular fa-credit-card"></i> จ่ายบัตรเครดิต
+                    </button>
+                </div>
             </div>
 
             <div id="creditCardList" class="space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-4">
@@ -317,9 +337,19 @@
 
         <!-- VIEW 4: RECURRING -->
         <div id="view-recurring" class="space-y-4 hidden">
-            <div class="flex justify-between items-center">
-                <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-rotate mr-1.5 text-amber-500"></i> ค่าบริการรายเดือนประจำ (Subscription)</h3>
-                <span class="text-xs text-slate-400" id="recurringCount">ทั้งหมด 0 รายการ</span>
+            <div class="flex justify-between items-center flex-wrap gap-2">
+                <div class="flex items-baseline gap-2">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-rotate mr-1.5 text-amber-500"></i> ค่าบริการรายเดือนประจำ (Subscription)</h3>
+                    <span class="text-xs text-slate-400" id="recurringCount">ทั้งหมด 0 รายการ</span>
+                </div>
+                <div class="flex items-center bg-slate-100 rounded-lg p-0.5" role="group" aria-label="สลับมุมมองรายการ">
+                    <button onclick="setViewMode('recurring', 'list', renderRecurring)" id="recurringViewModeListBtn" class="px-2.5 py-1.5 rounded-md text-xs transition-colors" title="มุมมองรายการ">
+                        <i class="fa-solid fa-list"></i>
+                    </button>
+                    <button onclick="setViewMode('recurring', 'card', renderRecurring)" id="recurringViewModeCardBtn" class="px-2.5 py-1.5 rounded-md text-xs transition-colors" title="มุมมองการ์ด">
+                        <i class="fa-solid fa-grip"></i>
+                    </button>
+                </div>
             </div>
 
             <div id="recurringList" class="space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-4">

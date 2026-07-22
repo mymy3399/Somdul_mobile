@@ -322,24 +322,32 @@ async function exportTransactionsCSV() {
 }
 
 // ----------------------------------------------------
-// TRANSACTION VIEW MODE (list / card, toggle + persisted)
+// LIST / CARD VIEW MODE (shared by transactions, debtors, credit cards,
+// recurring — each section persists its own choice under its own key, with
+// a default matching how that page already looked before this toggle existed).
 // ----------------------------------------------------
-const TX_VIEW_MODE_KEY = "somdul_tx_view_mode";
+const VIEW_MODE_DEFAULTS = {
+    transactions: 'list',
+    debtors: 'card',
+    cards: 'card',
+    recurring: 'card'
+};
 
-function getTransactionViewMode() {
-    return localStorage.getItem(TX_VIEW_MODE_KEY) === 'card' ? 'card' : 'list';
+function getViewMode(section) {
+    const stored = localStorage.getItem(`somdul_${section}_view_mode`);
+    return stored === 'list' || stored === 'card' ? stored : VIEW_MODE_DEFAULTS[section];
 }
 
-function setTransactionViewMode(mode) {
-    localStorage.setItem(TX_VIEW_MODE_KEY, mode);
-    updateTransactionViewModeButtons();
-    renderTransactions();
+function setViewMode(section, mode, renderFn) {
+    localStorage.setItem(`somdul_${section}_view_mode`, mode);
+    updateViewModeButtons(section);
+    renderFn();
 }
 
-function updateTransactionViewModeButtons() {
-    const mode = getTransactionViewMode();
-    const listBtn = document.getElementById('txViewModeListBtn');
-    const cardBtn = document.getElementById('txViewModeCardBtn');
+function updateViewModeButtons(section) {
+    const mode = getViewMode(section);
+    const listBtn = document.getElementById(`${section}ViewModeListBtn`);
+    const cardBtn = document.getElementById(`${section}ViewModeCardBtn`);
     if (!listBtn || !cardBtn) return;
     const activeClass = "px-2.5 py-1.5 rounded-md text-xs transition-colors bg-white text-emerald-600 shadow-sm";
     const inactiveClass = "px-2.5 py-1.5 rounded-md text-xs transition-colors text-slate-400 hover:text-slate-600";
@@ -347,13 +355,17 @@ function updateTransactionViewModeButtons() {
     cardBtn.className = mode === 'card' ? activeClass : inactiveClass;
 }
 
+// Backwards-compatible aliases (transactions was the first page to get this).
+function getTransactionViewMode() { return getViewMode('transactions'); }
+function setTransactionViewMode(mode) { setViewMode('transactions', mode, renderTransactions); }
+
 function renderTransactions() {
     const listContainer = document.getElementById('transactionHistory');
     if (!listContainer) return;
     listContainer.innerHTML = '';
-    updateTransactionViewModeButtons();
+    updateViewModeButtons('transactions');
 
-    const mode = getTransactionViewMode();
+    const mode = getViewMode('transactions');
     listContainer.className = mode === 'card'
         ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3"
         : "bg-white rounded-2xl border border-slate-200/70 divide-y divide-slate-50 overflow-hidden shadow-sm";
@@ -425,9 +437,14 @@ function renderDebtors() {
     const listContainer = document.getElementById('debtorList');
     if (!listContainer) return;
     listContainer.innerHTML = '';
+    updateViewModeButtons('debtors');
+    const mode = getViewMode('debtors');
+    listContainer.className = mode === 'list'
+        ? "bg-white rounded-2xl border border-slate-200/70 divide-y divide-slate-50 overflow-hidden shadow-sm"
+        : "space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-4";
 
     const activeDebtors = state.debtors.filter(d => d.status !== "PAID" && d.remainingAmount > 0);
-    
+
     const debtorCountEl = document.getElementById('debtorCount');
     if (debtorCountEl) {
         debtorCountEl.innerText = `ทั้งหมด ${activeDebtors.length} คน`;
@@ -456,7 +473,23 @@ function renderDebtors() {
             ? `${dueLabel} (เหลือ ${debtor.remainingInstallments} งวด)`
             : `${dueLabel} (ชำระก้อนเดียว)`;
 
-        const cardHTML = `
+        const itemHTML = mode === 'list' ? `
+            <div onclick="showDebtorDetail('${debtor.id}')" class="flex items-center justify-between p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors gap-2">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-8 h-8 ${badgeColor.includes('blue') ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'} rounded-lg flex items-center justify-center shrink-0">
+                        <i class="fa-solid ${debtor.type === 'CREDIT_CARD_INSTALLMENT' ? 'fa-credit-card' : 'fa-money-bill-wave'} text-[11px]"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h4 class="font-bold text-slate-800 truncate">${debtor.name}</h4>
+                        <span class="text-[10px] text-slate-400 block mt-0.5 truncate">${installmentText}</span>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <span class="font-bold text-rose-500 text-sm block">฿${debtor.remainingAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                    <button onclick="event.stopPropagation(); openReceivePaybackModal('${debtor.id}')" class="text-emerald-600 text-[10px] font-semibold hover:underline">รับชำระคืน</button>
+                </div>
+            </div>
+        ` : `
             <div onclick="showDebtorDetail('${debtor.id}')" class="bg-white rounded-2xl border border-slate-200/70 p-4 shadow-sm relative overflow-hidden cursor-pointer hover:border-emerald-200 transition-colors">
                 <div class="flex justify-between items-start mb-2">
                     <div>
@@ -489,10 +522,11 @@ function renderDebtors() {
                 </div>
             </div>
         `;
-        listContainer.insertAdjacentHTML('beforeend', cardHTML);
+        listContainer.insertAdjacentHTML('beforeend', itemHTML);
     });
 
     if (activeDebtors.length === 0) {
+        listContainer.className = "bg-white rounded-2xl border border-slate-200/70 shadow-sm";
         listContainer.innerHTML = `
             <div class="text-center py-8 text-slate-400 text-xs">
                 <i class="fa-regular fa-folder-open text-3xl mb-2 text-slate-300 block"></i>
@@ -507,12 +541,30 @@ function renderCreditCards() {
     const listContainer = document.getElementById('creditCardList');
     if (!listContainer) return;
     listContainer.innerHTML = '';
+    updateViewModeButtons('cards');
+    const mode = getViewMode('cards');
+    listContainer.className = mode === 'list'
+        ? "bg-white rounded-2xl border border-slate-200/70 divide-y divide-slate-50 overflow-hidden shadow-sm"
+        : "space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-4";
 
     state.creditCards.forEach((card) => {
         const availableLimit = card.limit - card.balance;
         const progressPercent = Math.min((card.balance / card.limit) * 100, 100);
 
-        const cardHTML = `
+        const itemHTML = mode === 'list' ? `
+            <div onclick="showCardDetail('${card.id}')" class="flex items-center justify-between p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors gap-2">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-9 h-6 bg-slate-800 text-white text-[9px] font-bold rounded-md flex items-center justify-center border border-slate-700 shrink-0">
+                        CARD
+                    </div>
+                    <div class="min-w-0">
+                        <h4 class="font-bold text-slate-800 truncate">${card.name}</h4>
+                        <span class="text-[10px] text-slate-400 block mt-0.5 truncate">ครบกำหนดวันที่ ${card.dueDay} | ว่างใช้ได้ ฿${availableLimit.toLocaleString('th-TH')}</span>
+                    </div>
+                </div>
+                <span class="font-bold text-slate-800 text-sm shrink-0">฿${card.balance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+            </div>
+        ` : `
             <div onclick="showCardDetail('${card.id}')" class="bg-white rounded-2xl border border-slate-200/70 p-4 shadow-sm relative overflow-hidden cursor-pointer hover:border-blue-200 transition-colors">
                 <div class="flex justify-between items-start mb-3">
                     <div class="flex items-center gap-2.5">
@@ -541,10 +593,11 @@ function renderCreditCards() {
                 </div>
             </div>
         `;
-        listContainer.insertAdjacentHTML('beforeend', cardHTML);
+        listContainer.insertAdjacentHTML('beforeend', itemHTML);
     });
-    
+
     if (state.creditCards.length === 0) {
+        listContainer.className = "bg-white rounded-2xl border border-slate-200/70 shadow-sm";
         listContainer.innerHTML = `
             <div class="text-center py-8 text-slate-400 text-xs">
                 <i class="fa-regular fa-credit-card text-3xl mb-2 text-slate-300 block"></i>
@@ -558,17 +611,38 @@ function renderRecurring() {
     const listContainer = document.getElementById('recurringList');
     if (!listContainer) return;
     listContainer.innerHTML = '';
+    updateViewModeButtons('recurring');
+    const mode = getViewMode('recurring');
+    listContainer.className = mode === 'list'
+        ? "bg-white rounded-2xl border border-slate-200/70 divide-y divide-slate-50 overflow-hidden shadow-sm"
+        : "space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-4";
 
     const unpaidRecurring = state.recurringPayments.filter(rec => rec.status === "WAITING");
     document.getElementById('recurringCount').innerText = `ค้างชำระประจำ ${unpaidRecurring.length} รายการ`;
 
     state.recurringPayments.forEach((rec) => {
         const isPaid = rec.status === "PAID";
-        const statusBadge = isPaid 
+        const statusBadge = isPaid
             ? `<span class="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-emerald-100">จ่ายแล้วเดือนนี้</span>`
             : `<span class="bg-amber-50 text-amber-700 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-amber-100">รอหักงวดถัดไป</span>`;
 
-        const cardHTML = `
+        const itemHTML = mode === 'list' ? `
+            <div onclick="showRecurringDetail('${rec.id}')" class="flex items-center justify-between p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors gap-2">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-8 h-8 ${isPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'} rounded-lg flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-rotate-right text-[11px]"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h4 class="font-bold text-slate-800 truncate">${rec.name}</h4>
+                        <span class="text-[10px] text-slate-400 block mt-0.5 truncate">ครบกำหนดวันที่ ${rec.dueDay} ของทุกเดือน</span>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <span class="font-bold text-slate-800 block text-sm">฿${rec.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                    ${!isPaid ? `<button onclick="event.stopPropagation(); openPayRecurringModal('${rec.id}')" class="text-emerald-600 text-[10px] font-semibold hover:underline">ยืนยันจ่าย</button>` : ''}
+                </div>
+            </div>
+        ` : `
             <div onclick="showRecurringDetail('${rec.id}')" class="bg-white rounded-2xl border border-slate-200/70 p-4 shadow-sm relative overflow-hidden flex justify-between items-center cursor-pointer hover:border-amber-200 transition-colors">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 ${isPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'} rounded-xl flex items-center justify-center">
@@ -589,10 +663,11 @@ function renderRecurring() {
                 </div>
             </div>
         `;
-        listContainer.insertAdjacentHTML('beforeend', cardHTML);
+        listContainer.insertAdjacentHTML('beforeend', itemHTML);
     });
-    
+
     if (state.recurringPayments.length === 0) {
+        listContainer.className = "bg-white rounded-2xl border border-slate-200/70 shadow-sm";
         listContainer.innerHTML = `
             <div class="text-center py-8 text-slate-400 text-xs">
                 <i class="fa-regular fa-folder-open text-3xl mb-2 text-slate-300 block"></i>
@@ -2953,6 +3028,8 @@ window.saveBudgetSubmit = saveBudgetSubmit;
 window.deleteBudgetSubmit = deleteBudgetSubmit;
 window.exportTransactionsCSV = exportTransactionsCSV;
 window.setTransactionViewMode = setTransactionViewMode;
+window.setViewMode = setViewMode;
+window.getViewMode = getViewMode;
 window.toggleDebtSplitMode = toggleDebtSplitMode;
 window.setFontSize = setFontSize;
 window.handlePromptPayQrSelect = handlePromptPayQrSelect;
