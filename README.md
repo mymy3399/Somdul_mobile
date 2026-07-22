@@ -51,7 +51,23 @@ docker compose up --build
 - ค่าเริ่มต้นของแอป Android คือ `https://sd.praj.uk` (กำหนดใน `frontend/api.js`, ตรวจจาก `Capacitor.isNativePlatform()`)
 - ผู้ใช้แก้ไขได้เองจากปุ่ม "⚙ ตั้งค่าเซิร์ฟเวอร์" ที่หน้า login (เก็บใน `localStorage`, มีปุ่มทดสอบการเชื่อมต่อ)
 
-Build APK ผ่าน GitHub Actions workflow `.github/workflows/android-apk.yml` (trigger เองผ่าน "Run workflow" หรือ push ที่แก้ `mobile/**`/`frontend/**` บน `main`) — ได้ debug APK ที่ยังไม่ได้ sign เป็น artifact ชื่อ `somdul-debug-apk` (สำหรับติดตั้งทดสอบเท่านั้น ยังไม่พร้อมขึ้น Play Store)
+Build APK ผ่าน GitHub Actions workflow `.github/workflows/android-apk.yml` (trigger เองผ่าน "Run workflow" หรือ push ที่แก้ `mobile/**`/`frontend/**` บน `main`) — ได้ debug APK ที่ยังไม่ได้ sign เป็น artifact ชื่อ `somdul-debug-apk` เสมอ
+
+**Signed release APK**: ถ้าตั้งค่า repo secrets ต่อไปนี้ workflow จะ build release APK ที่ sign แล้วเพิ่มให้อีก artifact หนึ่งชื่อ `somdul-release-apk` (ถ้าไม่ตั้งค่า จะข้ามขั้นตอนนี้ไปเฉยๆ ไม่กระทบ debug build):
+
+- `ANDROID_KEYSTORE_BASE64` — ไฟล์ `.jks`/`.keystore` แปลงเป็น base64 (เช่น `base64 -w0 release.jks`)
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+Build เองในเครื่องแบบ signed: สร้างไฟล์ `mobile/android/app/keystore.properties` (ไม่ต้อง commit, อยู่ใน `.gitignore` แล้ว) แบบนี้ แล้วรัน `./gradlew assembleRelease` แทน `assembleDebug`:
+
+```properties
+storeFile=release.jks
+storePassword=...
+keyAlias=...
+keyPassword=...
+```
 
 Build เองในเครื่อง (ต้องมี Android SDK + JDK 21):
 

@@ -1,5 +1,15 @@
 apply plugin: 'com.android.application'
 
+// Release signing is optional: it only activates when keystore.properties
+// exists (created locally by hand, or written out from CI secrets — see
+// .github/workflows/android-apk.yml). Without it, `assembleRelease` still
+// works but produces an unsigned APK, same as before this was added.
+def keystorePropertiesFile = file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "uk.praj.sd"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,10 +26,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystoreProperties.getProperty('storeFile')) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keystoreProperties.getProperty('storeFile')) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
