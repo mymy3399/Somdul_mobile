@@ -51,7 +51,9 @@ docker compose up --build
 - ค่าเริ่มต้นของแอป Android คือ `https://sd.praj.uk` (กำหนดใน `frontend/api.js`, ตรวจจาก `Capacitor.isNativePlatform()`)
 - ผู้ใช้แก้ไขได้เองจากปุ่ม "⚙ ตั้งค่าเซิร์ฟเวอร์" ที่หน้า login (เก็บใน `localStorage`, มีปุ่มทดสอบการเชื่อมต่อ)
 
-Build APK ผ่าน GitHub Actions workflow `.github/workflows/android-apk.yml` (trigger เองผ่าน "Run workflow" หรือ push ที่แก้ `mobile/**`/`frontend/**` บน `main`) — ได้ debug APK ที่ยังไม่ได้ sign เป็น artifact ชื่อ `somdul-debug-apk` เสมอ
+Build APK ผ่าน GitHub Actions workflow `.github/workflows/android-apk.yml` (trigger เองผ่าน "Run workflow" หรือ push ที่แก้ `mobile/**`/`frontend/**` บน `main`) — ได้ debug APK ที่ sign ด้วย debug key เดียวกันทุกครั้ง (ดูหัวข้อถัดไป) เป็น artifact ชื่อ `somdul-debug-apk` เสมอ
+
+**Debug keystore คงที่**: `mobile/android/app/debug.keystore` ถูก commit ไว้ในโปรเจกต์โดยตั้งใจ (ไม่ใช่ secret เพราะไม่เคยใช้ sign release) เพื่อให้ทุกเครื่องและทุกรันของ CI sign debug build ด้วยคีย์เดียวกัน — ถ้าไม่มีไฟล์นี้ Android Gradle Plugin จะสร้าง `~/.android/debug.keystore` ขึ้นใหม่แบบสุ่มทุกเครื่อง/ทุกรัน ทำให้ APK debug จากคนละรันมีลายเซ็นคนละอัน แล้วติดตั้งทับกันไม่ได้ (ขึ้น "App not installed as package conflicts with an existing installation" หรือ `INSTALL_FAILED_UPDATE_INCOMPATIBLE`) — ถ้าเจอ error นี้กับ APK เก่าที่ติดตั้งไปก่อนมีไฟล์นี้ ให้ถอนการติดตั้งแอปเดิมออกก่อนครั้งเดียว หลังจากนั้นทุก build ใหม่จะติดตั้งทับได้ตามปกติ
 
 **Signed release APK**: ถ้าตั้งค่า repo secrets ต่อไปนี้ workflow จะ build release APK ที่ sign แล้วเพิ่มให้อีก artifact หนึ่งชื่อ `somdul-release-apk` (ถ้าไม่ตั้งค่า จะข้ามขั้นตอนนี้ไปเฉยๆ ไม่กระทบ debug build):
 

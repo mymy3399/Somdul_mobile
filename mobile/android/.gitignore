@@ -56,6 +56,10 @@ captures/
 *.jks
 *.keystore
 keystore.properties
+# ...except the shared debug keystore, checked in on purpose so every CI run
+# and every developer signs debug builds with the same key (see app/build.gradle) —
+# it is never used to sign a release build, so it isn't a real secret.
+!app/debug.keystore
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
