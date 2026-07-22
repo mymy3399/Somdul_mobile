@@ -5,13 +5,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from pydantic import BaseModel
 from decimal import Decimal
-from datetime import datetime
+from datetime import date, datetime
 
 from app.database import get_session
-from app.models import Debtor, Debt, CreditCard, Wallet, Transaction, User
+from app.models import Debtor, Debt, DebtHistory, CreditCard, Wallet, Transaction, User
 from app.security import get_current_user
 
 router = APIRouter(prefix="/debtors", tags=["Debtors & Debts"])
+
+VALID_INTEREST_TYPES = (None, "FLAT", "PERCENT")
 
 # ----------------------------------------------------
 # SCHEMAS
@@ -26,6 +28,9 @@ class DebtResponseSchema(BaseModel):
     total_installments: int
     remaining_installments: int
     due_day: int
+    due_date: Optional[date] = None
+    interest_type: Optional[str] = None
+    interest_value: Optional[Decimal] = None
     memo: Optional[str] = None
     status: str
     created_at: datetime
@@ -47,15 +52,33 @@ class DebtCreateSchema(BaseModel):
     debtor_id: Optional[UUID] = None  # If null, use debtor_name to find/create
     debtor_name: Optional[str] = None # Used to create a new debtor if debtor_id is null
     contact_info: Optional[str] = None # Used if creating new debtor
-    
+
     debt_type: str # CASH_LOAN, CREDIT_CARD_INSTALLMENT
     credit_card_id: Optional[UUID] = None
     wallet_id: Optional[UUID] = None # Optional wallet to deduct cash from for CASH_LOAN
-    
+
     total_amount: Decimal
     total_installments: int = 1
     due_day: int = 1
+    due_date: Optional[date] = None # specific calendar date, for one-off (non-monthly) debts
+    interest_type: Optional[str] = None
+    interest_value: Optional[Decimal] = None
     memo: Optional[str] = None
+
+class DebtUpdateSchema(BaseModel):
+    due_day: Optional[int] = None
+    due_date: Optional[date] = None
+    interest_type: Optional[str] = None
+    interest_value: Optional[Decimal] = None
+    memo: Optional[str] = None
+
+class DebtHistoryResponseSchema(BaseModel):
+    id: UUID
+    summary: str
+    changed_at: datetime
+
+    class Config:
+        from_attributes = True
 
 class RepaymentSchema(BaseModel):
     wallet_id: UUID
@@ -207,6 +230,9 @@ def create_debt(
     else:
         raise HTTPException(status_code=400, detail="Invalid debt_type")
 
+    if data.interest_type not in VALID_INTEREST_TYPES:
+        raise HTTPException(status_code=400, detail="interest_type must be FLAT, PERCENT, or omitted")
+
     # 3. Create Debt
     new_debt = Debt(
         debtor_id=debtor.id,
@@ -217,6 +243,9 @@ def create_debt(
         total_installments=data.total_installments,
         remaining_installments=data.total_installments,
         due_day=data.due_day,
+        due_date=data.due_date,
+        interest_type=data.interest_type,
+        interest_value=data.interest_value,
         memo=data.memo,
         status="UNPAID",
         created_at=datetime.utcnow()
@@ -341,3 +370,76 @@ def reset_debt_cycle(
     session.commit()
     session.refresh(debt)
     return debt
+
+def _format_thai_date(d: date) -> str:
+    return d.strftime("%d/%m/%Y")
+
+INTEREST_TYPE_LABELS = {"FLAT": "บาท", "PERCENT": "%"}
+
+@router.put("/debts/{debt_id}", response_model=DebtResponseSchema)
+def update_debt(
+    debt_id: UUID,
+    data: DebtUpdateSchema,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Edit a debt's due date/day, interest terms, or memo — every actual
+    change is appended to DebtHistory as a human-readable Thai summary so a
+    reschedule or interest adjustment is auditable later. Never touches
+    remaining_amount/status — repayments are still the only thing that moves
+    money (see repay_debt)."""
+    debt_stmt = select(Debt).join(Debtor).where(Debt.id == debt_id, Debtor.user_id == current_user.id, Debt.deleted_at == None)
+    debt = session.exec(debt_stmt).first()
+    if not debt:
+        raise HTTPException(status_code=404, detail="Debt record not found")
+
+    if data.interest_type not in VALID_INTEREST_TYPES:
+        raise HTTPException(status_code=400, detail="interest_type must be FLAT, PERCENT, or omitted")
+
+    changes: list[str] = []
+
+    if data.due_date is not None and data.due_date != debt.due_date:
+        old_label = _format_thai_date(debt.due_date) if debt.due_date else f"วันที่ {debt.due_day} ของทุกเดือน"
+        changes.append(f"เลื่อนกำหนดชำระจาก {old_label} เป็น {_format_thai_date(data.due_date)}")
+        debt.due_date = data.due_date
+
+    if data.due_day is not None and data.due_day != debt.due_day:
+        changes.append(f"เปลี่ยนวันกำหนดชำระรายเดือนจากวันที่ {debt.due_day} เป็นวันที่ {data.due_day}")
+        debt.due_day = data.due_day
+
+    new_interest_type = data.interest_type if "interest_type" in data.model_fields_set else debt.interest_type
+    new_interest_value = data.interest_value if "interest_value" in data.model_fields_set else debt.interest_value
+    if new_interest_type != debt.interest_type or new_interest_value != debt.interest_value:
+        old_label = f"{debt.interest_value}{INTEREST_TYPE_LABELS.get(debt.interest_type, '')}" if debt.interest_type else "ไม่กำหนด"
+        new_label = f"{new_interest_value}{INTEREST_TYPE_LABELS.get(new_interest_type, '')}" if new_interest_type else "ไม่กำหนด"
+        changes.append(f"ปรับดอกเบี้ยจาก {old_label} เป็น {new_label}")
+        debt.interest_type = new_interest_type
+        debt.interest_value = new_interest_value
+
+    if data.memo is not None and data.memo != debt.memo:
+        changes.append(f"แก้ไขหมายเหตุจาก \"{debt.memo or '-'}\" เป็น \"{data.memo}\"")
+        debt.memo = data.memo
+
+    if changes:
+        debt.updated_at = datetime.utcnow()
+        session.add(debt)
+        for change in changes:
+            session.add(DebtHistory(debt_id=debt.id, summary=change, changed_at=debt.updated_at))
+        session.commit()
+        session.refresh(debt)
+
+    return debt
+
+@router.get("/debts/{debt_id}/history", response_model=List[DebtHistoryResponseSchema])
+def list_debt_history(
+    debt_id: UUID,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    debt_stmt = select(Debt).join(Debtor).where(Debt.id == debt_id, Debtor.user_id == current_user.id, Debt.deleted_at == None)
+    debt = session.exec(debt_stmt).first()
+    if not debt:
+        raise HTTPException(status_code=404, detail="Debt record not found")
+
+    stmt = select(DebtHistory).where(DebtHistory.debt_id == debt_id).order_by(DebtHistory.changed_at.desc())
+    return session.exec(stmt).all()

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, List
 from uuid import UUID, uuid4
@@ -104,7 +104,10 @@ class Debt(SQLModel, table=True):
     remaining_amount: Decimal = Field(decimal_places=2, max_digits=15)
     total_installments: int = Field(default=1)
     remaining_installments: int = Field(default=1)
-    due_day: int = Field(default=1) # day of the month for installments/payback
+    due_day: int = Field(default=1) # day of the month for recurring monthly installments
+    due_date: Optional[date] = Field(default=None) # specific calendar date for one-off (non-monthly) debts — takes precedence over due_day when set
+    interest_type: Optional[str] = Field(default=None, max_length=20) # None, "FLAT" (baht), "PERCENT" — display-only, never auto-applied to remaining_amount
+    interest_value: Optional[Decimal] = Field(default=None, decimal_places=2, max_digits=15)
     memo: Optional[str] = Field(default=None, max_length=255)
     status: str = Field(default="UNPAID") # UNPAID, PARTIALLY_PAID, PAID
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -114,6 +117,21 @@ class Debt(SQLModel, table=True):
     # Relationships
     debtor: Optional[Debtor] = Relationship(back_populates="debts")
     credit_card: Optional[CreditCard] = Relationship(back_populates="debts")
+    history: List["DebtHistory"] = Relationship(back_populates="debt", cascade_delete=True)
+
+
+# ----------------------------------------------------
+# 5b. DEBT HISTORY MODEL (audit log for reschedules / interest / memo edits)
+# ----------------------------------------------------
+class DebtHistory(SQLModel, table=True):
+    __tablename__ = "debt_history"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    debt_id: UUID = Field(foreign_key="debts.id", ondelete="CASCADE")
+    summary: str = Field(max_length=500) # human-readable Thai description of what changed, e.g. "เลื่อนกำหนดชำระจาก 25/07/2026 เป็น 05/08/2026"
+    changed_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+    debt: Optional["Debt"] = Relationship(back_populates="history")
 
 
 # ----------------------------------------------------

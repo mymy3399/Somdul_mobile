@@ -38,7 +38,11 @@ def _build_digest_for_user(session: Session, user: User) -> list[str]:
     items: list[str] = []
 
     recs = session.exec(
-        select(RecurringPayment).where(RecurringPayment.user_id == user.id, RecurringPayment.status == "WAITING")
+        select(RecurringPayment).where(
+            RecurringPayment.user_id == user.id,
+            RecurringPayment.status == "WAITING",
+            RecurringPayment.deleted_at == None,
+        )
     ).all()
     for r in recs:
         d = days_until_due(r.due_day)
@@ -46,20 +50,29 @@ def _build_digest_for_user(session: Session, user: User) -> list[str]:
             items.append(f"ค่าบริการ {r.name} ฿{r.amount:,.2f} ครบกำหนดใน {d} วัน")
 
     cards = session.exec(
-        select(CreditCard).where(CreditCard.user_id == user.id, CreditCard.current_balance > 0)
+        select(CreditCard).where(
+            CreditCard.user_id == user.id,
+            CreditCard.current_balance > 0,
+            CreditCard.deleted_at == None,
+        )
     ).all()
     for c in cards:
         d = days_until_due(c.due_day)
         if 0 <= d <= within:
             items.append(f"บัตร {c.card_name} ยอดค้าง ฿{c.current_balance:,.2f} ครบกำหนดใน {d} วัน")
 
-    debtors = session.exec(select(Debtor).where(Debtor.user_id == user.id)).all()
+    debtors = session.exec(select(Debtor).where(Debtor.user_id == user.id, Debtor.deleted_at == None)).all()
     for debtor in debtors:
         debts = session.exec(
-            select(Debt).where(Debt.debtor_id == debtor.id, Debt.status != "PAID")
+            select(Debt).where(Debt.debtor_id == debtor.id, Debt.status != "PAID", Debt.deleted_at == None)
         ).all()
         for debt in debts:
-            d = days_until_due(debt.due_day)
+            # A specific due_date (one-off debts) takes precedence over the
+            # recurring due_day-of-month calculation.
+            if debt.due_date is not None:
+                d = (debt.due_date - date.today()).days
+            else:
+                d = days_until_due(debt.due_day)
             if 0 <= d <= within:
                 items.append(f"{debtor.debtor_name} ค้างคืน ฿{debt.remaining_amount:,.2f} ครบกำหนดใน {d} วัน")
 

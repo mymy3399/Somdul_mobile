@@ -491,6 +491,9 @@ async function apiFetchAllData() {
                     totalInstallments: Number(debt.total_installments),
                     remainingInstallments: Number(debt.remaining_installments),
                     dueDay: Number(debt.due_day),
+                    dueDate: debt.due_date || null,
+                    interestType: debt.interest_type || null,
+                    interestValue: debt.interest_value !== null && debt.interest_value !== undefined ? Number(debt.interest_value) : null,
                     memo: debt.memo,
                     status: debt.status,
                     createdAt: debt.created_at
@@ -694,7 +697,7 @@ async function apiPayCreditCard(cardId, walletId, amount) {
 // ----------------------------------------------------
 // DEBTORS & DEBTS ACTIONS
 // ----------------------------------------------------
-async function apiCreateDebt(debtorId, debtorName, contactInfo, debtType, cardId, walletId, amount, installments, dueDay, memo) {
+async function apiCreateDebt(debtorId, debtorName, contactInfo, debtType, cardId, walletId, amount, installments, dueDay, memo, dueDate, interestType, interestValue) {
     const payload = {
         debt_type: debtType,
         total_amount: Number(amount),
@@ -702,7 +705,13 @@ async function apiCreateDebt(debtorId, debtorName, contactInfo, debtType, cardId
         due_day: Number(dueDay),
         memo: memo
     };
-    
+
+    if (dueDate) payload.due_date = dueDate;
+    if (interestType) {
+        payload.interest_type = interestType;
+        payload.interest_value = Number(interestValue) || 0;
+    }
+
     const cleanedDebtorId = cleanUUID(debtorId);
     if (cleanedDebtorId) {
         payload.debtor_id = cleanedDebtorId;
@@ -710,17 +719,17 @@ async function apiCreateDebt(debtorId, debtorName, contactInfo, debtType, cardId
         payload.debtor_name = debtorName;
         payload.contact_info = contactInfo;
     }
-    
+
     const cleanedCardId = cleanUUID(cardId);
     const cleanedWalletId = cleanUUID(walletId);
     if (cleanedCardId) payload.credit_card_id = cleanedCardId;
     if (cleanedWalletId) payload.wallet_id = cleanedWalletId;
-    
+
     const res = await queueableFetch(`${API_BASE}/debtors/debts`, {
         method: "POST",
         headers: getJsonHeaders(),
         body: JSON.stringify(payload)
-    }, "apiCreateDebt", [debtorId, debtorName, contactInfo, debtType, cardId, walletId, amount, installments, dueDay, memo]);
+    }, "apiCreateDebt", [debtorId, debtorName, contactInfo, debtType, cardId, walletId, amount, installments, dueDay, memo, dueDate, interestType, interestValue]);
     if (res === OFFLINE_QUEUED) return;
 
     if (!res.ok) {
@@ -728,6 +737,36 @@ async function apiCreateDebt(debtorId, debtorName, contactInfo, debtType, cardId
         throw new Error(getErrorMessage(err, "ไม่สามารถเพิ่มลูกหนี้/หนี้สินได้"));
     }
     await apiFetchAllData();
+}
+
+async function apiUpdateDebt(debtId, { dueDay, dueDate, interestType, interestValue, memo } = {}) {
+    const payload = {};
+    if (dueDay !== undefined) payload.due_day = Number(dueDay);
+    if (dueDate !== undefined) payload.due_date = dueDate || null;
+    if (interestType !== undefined) payload.interest_type = interestType || null;
+    if (interestValue !== undefined) payload.interest_value = interestValue === "" || interestValue === null ? null : Number(interestValue);
+    if (memo !== undefined) payload.memo = memo;
+
+    const res = await queueableFetch(`${API_BASE}/debtors/debts/${debtId}`, {
+        method: "PUT",
+        headers: getJsonHeaders(),
+        body: JSON.stringify(payload)
+    }, "apiUpdateDebt", [debtId, { dueDay, dueDate, interestType, interestValue, memo }]);
+    if (res === OFFLINE_QUEUED) return;
+
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(getErrorMessage(err, "ไม่สามารถแก้ไขรายการหนี้ได้"));
+    }
+    await apiFetchAllData();
+}
+
+async function apiFetchDebtHistory(debtId) {
+    const res = await fetch(`${API_BASE}/debtors/debts/${debtId}/history`, {
+        headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error("ไม่สามารถโหลดประวัติการแก้ไขได้");
+    return await res.json();
 }
 
 async function apiRepayDebt(debtId, walletId, amount) {

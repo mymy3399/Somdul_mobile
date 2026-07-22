@@ -11,7 +11,7 @@
 const FONT_SCALE_STORAGE_KEY = "somdul_font_scale";
 
 function syncFontSizeButtons() {
-    const current = parseFloat(localStorage.getItem(FONT_SCALE_STORAGE_KEY)) || 100;
+    const current = parseFloat(localStorage.getItem(FONT_SCALE_STORAGE_KEY)) || 112.5;
     document.querySelectorAll('#fontSizePicker [data-font-scale]').forEach(btn => {
         const isActive = Number(btn.dataset.fontScale) === current;
         btn.className = isActive
@@ -28,7 +28,7 @@ function setFontSize(scale) {
 
 (function applySavedFontSize() {
     const saved = parseFloat(localStorage.getItem(FONT_SCALE_STORAGE_KEY));
-    document.documentElement.style.fontSize = `${!isNaN(saved) ? saved : 100}%`;
+    document.documentElement.style.fontSize = `${!isNaN(saved) ? saved : 112.5}%`;
 })();
 
 // ----------------------------------------------------
@@ -129,7 +129,7 @@ function renderOverviewChart(totalCash, totalDebts, totalCreditCards, totalRecur
                         boxWidth: 10,
                         font: {
                             size: 10,
-                            family: 'Prompt, Outfit, sans-serif'
+                            family: 'Google Sans, Prompt, Outfit, sans-serif'
                         },
                         padding: 10
                     }
@@ -306,7 +306,7 @@ async function renderMonthlyTrendChart() {
                 y: { ticks: { font: { size: 9 } }, beginAtZero: true }
             },
             plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, family: 'Prompt, Outfit, sans-serif' }, padding: 10 } },
+                legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, family: 'Google Sans, Prompt, Outfit, sans-serif' }, padding: 10 } },
                 tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ฿${ctx.raw.toLocaleString('th-TH')}` } }
             }
         }
@@ -321,10 +321,42 @@ async function exportTransactionsCSV() {
     }
 }
 
+// ----------------------------------------------------
+// TRANSACTION VIEW MODE (list / card, toggle + persisted)
+// ----------------------------------------------------
+const TX_VIEW_MODE_KEY = "somdul_tx_view_mode";
+
+function getTransactionViewMode() {
+    return localStorage.getItem(TX_VIEW_MODE_KEY) === 'card' ? 'card' : 'list';
+}
+
+function setTransactionViewMode(mode) {
+    localStorage.setItem(TX_VIEW_MODE_KEY, mode);
+    updateTransactionViewModeButtons();
+    renderTransactions();
+}
+
+function updateTransactionViewModeButtons() {
+    const mode = getTransactionViewMode();
+    const listBtn = document.getElementById('txViewModeListBtn');
+    const cardBtn = document.getElementById('txViewModeCardBtn');
+    if (!listBtn || !cardBtn) return;
+    const activeClass = "px-2.5 py-1.5 rounded-md text-xs transition-colors bg-white text-emerald-600 shadow-sm";
+    const inactiveClass = "px-2.5 py-1.5 rounded-md text-xs transition-colors text-slate-400 hover:text-slate-600";
+    listBtn.className = mode === 'list' ? activeClass : inactiveClass;
+    cardBtn.className = mode === 'card' ? activeClass : inactiveClass;
+}
+
 function renderTransactions() {
     const listContainer = document.getElementById('transactionHistory');
     if (!listContainer) return;
     listContainer.innerHTML = '';
+    updateTransactionViewModeButtons();
+
+    const mode = getTransactionViewMode();
+    listContainer.className = mode === 'card'
+        ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3"
+        : "bg-white rounded-2xl border border-slate-200/70 divide-y divide-slate-50 overflow-hidden shadow-sm";
 
     state.transactions.forEach((tx) => {
         const isExpense = tx.type === "EXPENSE";
@@ -337,14 +369,29 @@ function renderTransactions() {
         let sourceName = 'ไม่ระบุ';
         const wallet = state.wallets.find(w => w.id === tx.walletId);
         const card = state.creditCards.find(c => c.id === tx.walletId);
-        
+
         if (wallet) {
             sourceName = wallet.name;
         } else if (card) {
             sourceName = `${card.name} (บัตรเครดิต)`;
         }
 
-        const txHTML = `
+        const txHTML = mode === 'card' ? `
+            <div onclick="showTransactionDetail('${tx.id}')" class="bg-white rounded-2xl border border-slate-200/70 shadow-sm p-4 cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all">
+                <div class="flex items-start justify-between gap-2 mb-3">
+                    <div class="w-10 h-10 ${iconBg} rounded-xl flex items-center justify-center shrink-0">
+                        <i class="${iconClass} text-sm"></i>
+                    </div>
+                    <span class="font-bold ${amountColor} text-base">${amountSign}฿${tx.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <h4 class="font-bold text-slate-800 text-sm mb-1">${tx.desc}</h4>
+                <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>${sourceName}</span>
+                    ${cat ? `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-normal shrink-0">${cat.name}</span>` : ''}
+                </div>
+                <span class="text-[10px] text-slate-400 block mt-1.5 pt-1.5 border-t border-slate-100">${tx.date}</span>
+            </div>
+        ` : `
             <div onclick="showTransactionDetail('${tx.id}')" class="flex items-center justify-between p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 ${iconBg} rounded-lg flex items-center justify-center shrink-0">
@@ -365,6 +412,7 @@ function renderTransactions() {
     });
 
     if (state.transactions.length === 0) {
+        listContainer.className = "bg-white rounded-2xl border border-slate-200/70 shadow-sm";
         listContainer.innerHTML = `
             <div class="text-center py-8 text-slate-400 text-xs">
                 ไม่มีประวัติธุรกรรมในระบบ กดปุ่มจดบันทึกด้านบนเพื่อเพิ่มรายการแรกได้เลยครับ!
@@ -403,9 +451,10 @@ function renderDebtors() {
             badgeHTML = `<span class="text-[10px] px-2 py-0.5 rounded-full border ${badgeColor}"><i class="fa-solid fa-money-bill-wave mr-0.5"></i> เงินสด</span>`;
         }
 
-        const installmentText = debtor.totalInstallments > 1 
-            ? `ดีลทุกวันที่ ${debtor.dueDay} (เหลือ ${debtor.remainingInstallments} งวด)`
-            : `ดีลทุกวันที่ ${debtor.dueDay} (ชำระก้อนเดียว)`;
+        const dueLabel = debtor.dueDate ? `ครบกำหนด ${formatThaiDateOnly(debtor.dueDate)}` : `ดีลทุกวันที่ ${debtor.dueDay}`;
+        const installmentText = debtor.totalInstallments > 1
+            ? `${dueLabel} (เหลือ ${debtor.remainingInstallments} งวด)`
+            : `${dueLabel} (ชำระก้อนเดียว)`;
 
         const cardHTML = `
             <div onclick="showDebtorDetail('${debtor.id}')" class="bg-white rounded-2xl border border-slate-200/70 p-4 shadow-sm relative overflow-hidden cursor-pointer hover:border-emerald-200 transition-colors">
@@ -662,6 +711,12 @@ function getTimelineItems() {
         }
     }
     return items;
+}
+
+function formatThaiDateOnly(dateStr) {
+    const date = new Date(dateStr);
+    const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    return `${date.getDate()} ${thaiMonths[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 function getNextPaybackVal(debtor) {
@@ -1055,11 +1110,27 @@ async function handleDebtSubmit(e) {
     const debtCardId = document.getElementById('debtCardId').value;
     const totalAmount = parseFloat(document.getElementById('debtAmount').value);
     const debtInstallments = parseInt(document.getElementById('debtInstallments').value);
-    const debtDueDay = parseInt(document.getElementById('debtDueDay').value);
+    const usesDueDate = debtType === 'CASH_LOAN';
+    const debtDueDay = usesDueDate ? 1 : parseInt(document.getElementById('debtDueDay').value);
+    const debtDueDate = usesDueDate ? document.getElementById('debtDueDate').value : null;
+    const interestType = document.getElementById('debtInterestType').value || null;
+    const interestValue = interestType ? parseFloat(document.getElementById('debtInterestValue').value) : null;
     const baseMemo = document.getElementById('debtMemo').value.trim() || "บันทึกยืมเงินส่วนกลาง";
 
-    if (isNaN(totalAmount) || totalAmount <= 0 || isNaN(debtInstallments) || debtInstallments <= 0 || isNaN(debtDueDay) || debtDueDay < 1 || debtDueDay > 31) {
-        alertModal("กรุณากรอกข้อมูลและดีลกำหนดชำระ (1-31) ให้ถูกต้อง");
+    if (isNaN(totalAmount) || totalAmount <= 0 || isNaN(debtInstallments) || debtInstallments <= 0) {
+        alertModal("กรุณากรอกจำนวนเงินและจำนวนงวดให้ถูกต้อง");
+        return;
+    }
+    if (usesDueDate && !debtDueDate) {
+        alertModal("กรุณาระบุวันที่ครบกำหนดชำระคืน");
+        return;
+    }
+    if (!usesDueDate && (isNaN(debtDueDay) || debtDueDay < 1 || debtDueDay > 31)) {
+        alertModal("กรุณาระบุวันกำหนดชำระ (1-31) ให้ถูกต้อง");
+        return;
+    }
+    if (interestType && (isNaN(interestValue) || interestValue < 0)) {
+        alertModal("กรุณาระบุจำนวนดอกเบี้ยให้ถูกต้อง");
         return;
     }
 
@@ -1104,7 +1175,10 @@ async function handleDebtSubmit(e) {
                 shares[i],
                 debtInstallments,
                 debtDueDay,
-                memo
+                memo,
+                debtDueDate,
+                interestType,
+                interestValue
             );
         }
 
@@ -1544,6 +1618,21 @@ function toggleDebtSplitMode() {
     }
 }
 
+function toggleDebtInterestValue() {
+    const type = document.getElementById('debtInterestType').value;
+    const input = document.getElementById('debtInterestValue');
+    input.disabled = !type;
+    input.classList.toggle('opacity-50', !type);
+    if (!type) input.value = '';
+}
+
+function toggleEditDebtInterestValue() {
+    const type = document.getElementById('editDebtInterestType').value;
+    const input = document.getElementById('editDebtInterestValue');
+    input.disabled = !type;
+    input.classList.toggle('opacity-50', !type);
+}
+
 function toggleDebtTypeInputs() {
     const debtType = document.getElementById('debtType').value;
     const creditCardSelectWrapper = document.getElementById('creditCardSelectWrapper');
@@ -1552,7 +1641,18 @@ function toggleDebtTypeInputs() {
     const installmentLabel = document.getElementById('installmentLabel');
     const debtAmountLabel = document.getElementById('debtAmountLabel');
     const debtAmount = document.getElementById('debtAmount');
-    
+
+    // CASH_LOAN is a one-off payback (not a monthly billing cycle), so it
+    // gets a real calendar date instead of a recurring "day of month".
+    const usesDueDate = debtType === 'CASH_LOAN';
+    document.getElementById('debtDueDayWrapper').classList.toggle('hidden', usesDueDate);
+    document.getElementById('debtDueDateWrapper').classList.toggle('hidden', !usesDueDate);
+    if (usesDueDate && !document.getElementById('debtDueDate').value) {
+        const d = new Date();
+        d.setDate(d.getDate() + 30);
+        document.getElementById('debtDueDate').value = d.toISOString().slice(0, 10);
+    }
+
     if (debtType === 'CREDIT_CARD_INSTALLMENT') {
         creditCardSelectWrapper.classList.remove('hidden');
         if (subscriptionSelectWrapper) subscriptionSelectWrapper.classList.add('hidden');
@@ -1599,6 +1699,79 @@ function closeDebtModal() {
     document.getElementById('debtModal').classList.add('hidden');
     document.getElementById('debtSplitMode').checked = false;
     toggleDebtSplitMode();
+}
+
+// ----------------------------------------------------
+// EDIT / RESCHEDULE DEBT + HISTORY
+// ----------------------------------------------------
+async function openEditDebtModal(debtId) {
+    const debtor = state.debtors.find(d => d.id === debtId);
+    if (!debtor) return;
+
+    document.getElementById('editDebtId').value = debtId;
+    document.getElementById('editDebtDueDay').value = debtor.dueDay;
+    document.getElementById('editDebtDueDate').value = debtor.dueDate || '';
+    document.getElementById('editDebtInterestType').value = debtor.interestType || '';
+    document.getElementById('editDebtInterestValue').value = debtor.interestValue ?? '';
+    document.getElementById('editDebtMemo').value = debtor.memo || '';
+    toggleEditDebtInterestValue();
+
+    // A debt already using a specific due_date keeps rescheduling by date;
+    // otherwise it keeps the recurring day-of-month field.
+    document.getElementById('editDebtDueDayWrapper').classList.toggle('hidden', !!debtor.dueDate);
+    document.getElementById('editDebtDueDateWrapper').classList.toggle('hidden', !debtor.dueDate);
+
+    const historyEl = document.getElementById('editDebtHistoryList');
+    historyEl.innerHTML = '<p class="text-slate-400 text-center py-2">กำลังโหลดประวัติ...</p>';
+    document.getElementById('editDebtModal').classList.remove('hidden');
+
+    try {
+        const history = await apiFetchDebtHistory(debtId);
+        if (history.length === 0) {
+            historyEl.innerHTML = '<p class="text-slate-400 text-center py-2">ยังไม่มีประวัติการแก้ไข</p>';
+        } else {
+            historyEl.innerHTML = history.map(h => `
+                <div class="bg-slate-50 rounded-lg p-2 border border-slate-200/70">
+                    <p class="text-slate-700">${h.summary}</p>
+                    <span class="text-[10px] text-slate-400">${formatThaiDateOnly(h.changed_at)}</span>
+                </div>
+            `).join('');
+        }
+    } catch (err) {
+        historyEl.innerHTML = '<p class="text-slate-400 text-center py-2">ไม่สามารถโหลดประวัติได้ (อาจอยู่ในโหมดออฟไลน์)</p>';
+    }
+}
+
+function closeEditDebtModal() {
+    document.getElementById('editDebtModal').classList.add('hidden');
+}
+
+async function handleEditDebtSubmit(e) {
+    e.preventDefault();
+    const debtId = document.getElementById('editDebtId').value;
+    const usesDueDate = !document.getElementById('editDebtDueDateWrapper').classList.contains('hidden');
+    const interestType = document.getElementById('editDebtInterestType').value || null;
+    const interestValue = interestType ? parseFloat(document.getElementById('editDebtInterestValue').value) : null;
+
+    if (interestType && (isNaN(interestValue) || interestValue < 0)) {
+        alertModal("กรุณาระบุจำนวนดอกเบี้ยให้ถูกต้อง");
+        return;
+    }
+
+    try {
+        await apiUpdateDebt(debtId, {
+            dueDay: usesDueDate ? undefined : parseInt(document.getElementById('editDebtDueDay').value),
+            dueDate: usesDueDate ? document.getElementById('editDebtDueDate').value : undefined,
+            interestType,
+            interestValue,
+            memo: document.getElementById('editDebtMemo').value.trim()
+        });
+        closeEditDebtModal();
+        refreshAppUI();
+        alertModal("บันทึกการแก้ไขสำเร็จ!");
+    } catch (err) {
+        alertModal(err.message);
+    }
 }
 
 // DYNAMIC DETAILS POPUP
@@ -1770,7 +1943,11 @@ function showDebtorDetail(debtorId) {
                 `}
                 <div>
                     <span class="text-slate-400 block">กำหนดชำระคืน:</span>
-                    <span class="font-bold text-slate-700">วันที่ ${debtor.dueDay} ของทุกเดือน</span>
+                    <span class="font-bold text-slate-700">${debtor.dueDate ? formatThaiDateOnly(debtor.dueDate) : `วันที่ ${debtor.dueDay} ของทุกเดือน`}</span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block">ดอกเบี้ย:</span>
+                    <span class="font-bold text-slate-700">${debtor.interestType ? `${debtor.interestValue}${debtor.interestType === 'PERCENT' ? '%' : ' บาท'}` : 'ไม่กำหนด'}</span>
                 </div>
                 <div>
                     <span class="text-slate-400 block">จำนวนงวดที่คืนแล้ว:</span>
@@ -1795,6 +1972,10 @@ function showDebtorDetail(debtorId) {
     document.getElementById('detailModalContent').innerHTML = contentHTML;
 
     document.getElementById('detailDebtorActionsRow').classList.remove('hidden');
+    document.getElementById('detailEditDebtBtn').onclick = function() {
+        closeItemDetailModal();
+        openEditDebtModal(debtorId);
+    };
     document.getElementById('detailShareSlipBtn').onclick = function() {
         closeItemDetailModal();
         openShareSlip(debtorId);
@@ -2718,6 +2899,11 @@ window.openTransactionModal = openTransactionModal;
 window.closeTransactionModal = closeTransactionModal;
 window.openDebtModal = openDebtModal;
 window.closeDebtModal = closeDebtModal;
+window.openEditDebtModal = openEditDebtModal;
+window.closeEditDebtModal = closeEditDebtModal;
+window.handleEditDebtSubmit = handleEditDebtSubmit;
+window.toggleDebtInterestValue = toggleDebtInterestValue;
+window.toggleEditDebtInterestValue = toggleEditDebtInterestValue;
 window.openCreditCardPaymentModal = openCreditCardPaymentModal;
 window.closeCreditCardPaymentModal = closeCreditCardPaymentModal;
 window.updateCCPaymentMax = updateCCPaymentMax;
@@ -2766,6 +2952,7 @@ window.clearAllNotifications = clearAllNotifications;
 window.saveBudgetSubmit = saveBudgetSubmit;
 window.deleteBudgetSubmit = deleteBudgetSubmit;
 window.exportTransactionsCSV = exportTransactionsCSV;
+window.setTransactionViewMode = setTransactionViewMode;
 window.toggleDebtSplitMode = toggleDebtSplitMode;
 window.setFontSize = setFontSize;
 window.handlePromptPayQrSelect = handlePromptPayQrSelect;
