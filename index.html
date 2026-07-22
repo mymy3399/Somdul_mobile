@@ -36,13 +36,30 @@
          there's no visible jump between them. Without this, the very first
          thing painted (the login screen, or the app shell for a split
          second before it) could appear unstyled/top-left-aligned and then
-         "snap" into place once Tailwind finishes, which read as jank. -->
+         "snap" into place once Tailwind finishes, which read as jank.
+
+         `#loginScreen` is targeted via [id="loginScreen"] rather than
+         `#loginScreen` on purpose: an ID selector's specificity (1,0,0)
+         would permanently beat Tailwind's `.hidden { display: none }`
+         (0,1,0) once checkLoginSession() adds that class after a
+         successful login, keeping this fixed/inset-0/z-999 overlay stuck
+         on screen forever. An attribute selector matches the same element
+         but only carries class-level specificity (0,1,0), so it loses the
+         cascade tie to `.hidden` — Tailwind's generated stylesheet is
+         inserted into <head> after this block, and equal-specificity rules
+         resolve by source order, so `.hidden` (later) correctly wins once
+         it's applied.
+
+         nav's --somdul-bg color and lg: sidebar layout are kept in sync
+         with the Tailwind classes on the actual <nav> element below (see
+         its lg: classes) — update both together if that layout changes. -->
     <style>
-        body { margin: 0; background-color: #f8fafc; }
-        #loginScreen {
+        :root { --somdul-bg: #f8fafc; }
+        body { margin: 0; background-color: var(--somdul-bg); }
+        [id="loginScreen"] {
             position: fixed;
             inset: 0;
-            background-color: #f8fafc;
+            background-color: var(--somdul-bg);
             z-index: 999;
             display: flex;
             flex-direction: column;
@@ -51,7 +68,25 @@
             padding: 1rem;
         }
         header { position: sticky; top: 0; z-index: 40; background-color: rgba(255, 255, 255, 0.9); }
-        nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; background-color: rgba(255, 255, 255, 0.95); }
+        nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 40;
+            background-color: rgba(255, 255, 255, 0.95);
+        }
+        /* Mirrors this app's custom `lg:` breakpoint (see tailwind.config
+           below) — nav becomes a left sidebar instead of a bottom bar. */
+        @media (min-width: 900px) and (min-height: 560px) and (orientation: landscape), (min-width: 1024px) {
+            nav {
+                top: 0;
+                bottom: 0;
+                left: 0;
+                right: auto;
+                width: 15rem;
+            }
+        }
     </style>
 
     <!-- Tailwind CSS CDN (Play CDN — intentionally unpinned/no SRI: it's a
@@ -102,7 +137,7 @@
     <style>
         body {
             font-family: 'Google Sans', 'Prompt', 'Outfit', sans-serif;
-            background-color: #f8fafc;
+            background-color: var(--somdul-bg);
             letter-spacing: -0.01em;
         }
         /* Safe-area padding for notched/gesture-bar devices when running as

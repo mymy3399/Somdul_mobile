@@ -11,6 +11,13 @@
 // is only fetched/run after the page has already been parsed and painted.
 const FONT_SCALE_STORAGE_KEY = "somdul_font_scale";
 
+// Debounces Chart.js's own ResizeObserver-driven redraws for both charts
+// below — without this, any tiny, transient size change in a canvas's
+// container (e.g. a scrollbar appearing/disappearing as list content
+// changes height) triggers an immediate redraw, which reads as the chart
+// twitching independently of the update('none') calls used elsewhere.
+const CHART_RESIZE_DELAY = 100;
+
 function syncFontSizeButtons() {
     const current = parseFloat(localStorage.getItem(FONT_SCALE_STORAGE_KEY)) || 112.5;
     document.querySelectorAll('#fontSizePicker [data-font-scale]').forEach(btn => {
@@ -128,13 +135,7 @@ function renderOverviewChart(totalCash, totalDebts, totalCreditCards, totalRecur
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            // Debounce Chart.js's own ResizeObserver-driven redraws — without
-            // this, any tiny, transient size change in the canvas's
-            // container (e.g. a scrollbar appearing/disappearing as list
-            // content changes height) triggers an immediate redraw, which
-            // reads as the chart twitching independently of our own
-            // update('none') calls above.
-            resizeDelay: 100,
+            resizeDelay: CHART_RESIZE_DELAY,
             plugins: {
                 legend: {
                     position: 'bottom',
@@ -330,13 +331,7 @@ async function renderMonthlyTrendChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            // Debounce Chart.js's own ResizeObserver-driven redraws — without
-            // this, any tiny, transient size change in the canvas's
-            // container (e.g. a scrollbar appearing/disappearing as list
-            // content changes height) triggers an immediate redraw, which
-            // reads as the chart twitching independently of our own
-            // update('none') calls above.
-            resizeDelay: 100,
+            resizeDelay: CHART_RESIZE_DELAY,
             scales: {
                 x: { grid: { display: false }, ticks: { font: { size: 9 } } },
                 y: { ticks: { font: { size: 9 } }, beginAtZero: true }
