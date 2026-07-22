@@ -19,11 +19,23 @@
          only runs after the whole page is parsed (it's loaded at the end of
          body), so doing this there instead causes a visible reflow/"jump"
          once the real scale kicks in after first paint. Keep this key in
-         sync with FONT_SCALE_STORAGE_KEY in app.js. -->
+         sync with FONT_SCALE_STORAGE_KEY in app.js.
+
+         Also stamps a `has-token` class on <html> synchronously if a JWT is
+         already in localStorage, so the critical CSS below can default the
+         login screen to hidden for a returning, already-logged-in user
+         instead of always showing it first — apiFetchMe() (in app.js) still
+         does the real async check and un-hides it via checkLoginSession()
+         if that token turns out to be invalid/expired. Without this, the
+         login screen flashed on every reload for logged-in users too, since
+         it has no way to know the token is valid until that check resolves. -->
     <script>
         (function () {
             var saved = parseFloat(localStorage.getItem("somdul_font_scale"));
             document.documentElement.style.fontSize = (!isNaN(saved) ? saved : 112.5) + "%";
+            if (localStorage.getItem("somdul_jwt_token")) {
+                document.documentElement.classList.add("has-token");
+            }
         })();
     </script>
 
@@ -66,6 +78,12 @@
             justify-content: center;
             align-items: center;
             padding: 1rem;
+        }
+        /* A returning visitor with a stored JWT is assumed logged in until
+           proven otherwise (see the has-token script above) — don't flash
+           the login screen for them on every reload while that check runs. */
+        html.has-token [id="loginScreen"] {
+            display: none;
         }
         header { position: sticky; top: 0; z-index: 40; background-color: rgba(255, 255, 255, 0.9); }
         nav {

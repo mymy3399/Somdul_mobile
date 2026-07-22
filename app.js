@@ -1036,6 +1036,13 @@ function startTokenExpiryChecker() {
 function checkLoginSession() {
     const loginScreen = document.getElementById('loginScreen');
     if (!state.currentUser) {
+        // Retract the "assume logged in" shortcut the boot-time inline
+        // script (index.html <head>) stamped on <html> from seeing a stored
+        // token — that shortcut's CSS rule has higher specificity than the
+        // login screen's normal Tailwind classes and would otherwise keep
+        // it force-hidden forever, even after we now know for sure the
+        // token was invalid/expired and the screen needs to actually show.
+        document.documentElement.classList.remove('has-token');
         loginScreen.classList.remove('hidden');
         if (tokenExpiryCheckInterval) {
             clearInterval(tokenExpiryCheckInterval);
