@@ -1,0 +1,9 @@
+{
+  "appId": "uk.praj.sd",
+  "appName": "เงินทอง",
+  "webDir": "../frontend",
+  "backgroundColor": "#0f1115",
+  "android": {
+    "backgroundColor": "#0f1115"
+  }
+}
