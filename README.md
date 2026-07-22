@@ -94,3 +94,4 @@ mobile/
 - `Loan` + `LoanPayment` — เงินที่ให้คนอื่นยืม, การรับชำระแต่ละครั้งจะสร้าง `Transaction` ประเภทรายรับอัตโนมัติ
 - `Budget` — วงเงินต่อหมวดหมู่ต่อเดือน (unique ต่อ user+category), ยอดใช้จ่ายจริงคำนวณสดจาก `Transaction`
 - `PushSubscription` — Web Push subscription ต่ออุปกรณ์/เบราว์เซอร์ของผู้ใช้
+# Somdul_mobile
