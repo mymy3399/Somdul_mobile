@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Somdul - สมดุลการเงิน บัตรเครดิต และลูกหนี้</title>
+
+    <!-- PWA: manifest + icons -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#0f172a">
+    <!-- iOS doesn't read manifest.json's display/theme fields, so it needs these separately -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Somdul">
+
+    <!-- Tailwind CSS CDN (Play CDN — intentionally unpinned/no SRI: it's a
+         JIT compiler script the Tailwind team updates in place, so pinning
+         a content hash here would break styling on their next release) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Softer, layered "premium" shadow scale — replaces Tailwind's default
+        // flat shadows everywhere (both static markup here and the cards
+        // rendered dynamically from app.js, since they share these utilities).
+        tailwind.config = {
+            theme: {
+                extend: {
+                    // Default `lg` is a plain 1024px width breakpoint, which misses
+                    // tablets in landscape that are narrower than that (e.g. a 7-8"
+                    // tablet at ~960px) while also being wide enough to accidentally
+                    // catch large phones in landscape (iPhone Pro Max is ~932px wide
+                    // but only ~430px tall there). Redefining it as a combined
+                    // width+height+orientation query makes every existing `lg:` utility
+                    // in this file (sidebar nav, multi-column grids, etc.) key off
+                    // "wide enough AND tall enough AND landscape" instead of width alone,
+                    // so it fires for landscape tablets without also firing for landscape phones.
+                    screens: {
+                        lg: { raw: '(min-width: 900px) and (min-height: 560px) and (orientation: landscape), (min-width: 1024px)' },
+                    },
+                    boxShadow: {
+                        sm: '0 1px 2px 0 rgba(15,23,42,0.045), 0 1px 3px -1px rgba(15,23,42,0.06)',
+                        DEFAULT: '0 2px 4px -1px rgba(15,23,42,0.05), 0 4px 10px -2px rgba(15,23,42,0.07)',
+                        md: '0 4px 8px -2px rgba(15,23,42,0.06), 0 10px 20px -6px rgba(15,23,42,0.09)',
+                        lg: '0 8px 16px -4px rgba(15,23,42,0.08), 0 18px 36px -10px rgba(15,23,42,0.12)',
+                        xl: '0 12px 24px -6px rgba(15,23,42,0.10), 0 28px 56px -14px rgba(15,23,42,0.16)',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <!-- html2canvas CDN for PNG download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js (pinned to 4.5.1 so the SRI hash below stays valid) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+    
+    <style>
+        body {
+            font-family: 'Outfit', 'Prompt', sans-serif;
+            background-color: #f8fafc;
+            letter-spacing: -0.01em;
+        }
+        /* Safe-area padding for notched/gesture-bar devices when running as
+           an installed PWA (viewport-fit=cover lets content span edge-to-edge,
+           so these keep the header/bottom-nav clear of the notch and home
+           indicator). Not a built-in Tailwind utility, hence defined here. */
+        .pt-safe {
+            padding-top: env(safe-area-inset-top, 0px);
+        }
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        /* Glassmorphism Styles */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(241, 245, 249, 0.8);
+        }
+        .glass-modal {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        /* Custom Hover Transitions */
+        .hover-scale {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .hover-scale:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -4px rgba(15, 23, 42, 0.05);
+        }
+        /* Subtle diagonal light sweep for the hero balance card */
+        .hero-sheen {
+            position: relative;
+        }
+        .hero-sheen::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.05) 46%, transparent 62%);
+            pointer-events: none;
+        }
+        /* Numeric readouts should align on a fixed-width grid, like a real ledger */
+        .num-tabular {
+            font-variant-numeric: tabular-nums;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        /* Custom scrollbar for horizontal timeline */
+        .scrollbar-thin::-webkit-scrollbar {
+            height: 4px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col pb-12 lg:pb-0 lg:pl-60">
+
+    <!-- Top Navigation -->
+    <header class="pt-safe bg-white/90 backdrop-blur-md border-b border-slate-200/70 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center text-white shadow-md shadow-emerald-900/20">
+                    <i class="fa-solid fa-scale-balanced text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight tracking-tight">Somdul</h1>
+                    <p class="text-xs text-slate-400" id="headerProfileName">ระบบจัดการสมดุลการเงินส่วนตัว</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button onclick="openSettingsModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors" title="ตั้งค่าระบบ">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+                <button onclick="toggleInfoModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors" title="ข้อมูลการใช้งาน">
+                    <i class="fa-solid fa-circle-info"></i>
+                </button>
+                <div class="relative">
+                    <span id="notificationBadge" class="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full hidden"></span>
+                    <button onclick="openNotificationModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-colors" title="การแจ้งเตือน">
+                        <i class="fa-regular fa-bell text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto w-full px-4 pt-4 flex-1 pb-24 lg:pb-8">
+
+        <!-- VIEW 1: HOME/DASHBOARD -->
+        <div id="view-home" class="space-y-4">
+            <!-- WALLET CARD (SAFE TO SPEND) + CHART: stacked on mobile/tablet, side-by-side on desktop -->
+            <div class="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-5 lg:gap-4 lg:items-stretch">
+            <section class="hero-sheen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 text-white rounded-3xl p-4 shadow-xl shadow-slate-900/30 relative overflow-hidden lg:col-span-3">
+                <div class="absolute -right-8 -bottom-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-xl"></div>
+                <div class="absolute -left-10 -top-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl"></div>
+
+                <div class="flex justify-between items-start mb-3 relative">
+                    <div>
+                        <span class="text-xs text-slate-300 font-light tracking-wide uppercase">ยอดเงินใช้ได้จริงคงเหลือ (Safe-to-Spend)</span>
+                        <h2 class="text-3xl font-bold mt-1 text-emerald-400 tracking-tight num-tabular" id="displaySafeToSpend">฿0.00</h2>
+                    </div>
+                    <span class="bg-white/10 backdrop-blur-sm text-emerald-300 text-[10px] font-medium px-2.5 py-1 rounded-full border border-emerald-500/30">
+                        <i class="fa-solid fa-shield-halved mr-1"></i> ประเมินแล้วปลอดภัย
+                    </span>
+                </div>
+
+                <div class="h-px w-full bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent relative"></div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-2 gap-3 pt-3 text-xs relative">
+                    <div>
+                        <span class="text-slate-400 block mb-0.5">เงินสดรวมทุกกระเป๋า</span>
+                        <span class="font-semibold text-slate-100 text-sm num-tabular" id="displayTotalCash">฿0.00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block mb-0.5">ค่าใช้จ่ายรายเดือนที่รอตัด</span>
+                        <span class="font-semibold text-rose-300 text-sm num-tabular" id="displayTotalRecurring">฿0.00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block mb-0.5">ยอดหนี้บัตรเครดิตค้างจ่าย</span>
+                        <span class="font-semibold text-amber-300 text-sm num-tabular" id="displayTotalCreditCards">฿0.00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block mb-0.5">ลูกหนี้ค้างจ่ายคืนเรา</span>
+                        <span class="font-semibold text-emerald-300 text-sm num-tabular" id="displayTotalDebts">฿0.00</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CHART CARD -->
+            <section class="bg-white rounded-3xl p-4 border border-slate-200/70 shadow-sm space-y-2 hover-scale glass-card lg:col-span-2 lg:flex lg:flex-col">
+                <div class="flex justify-between items-center border-b border-slate-50 pb-2">
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                        <i class="fa-solid fa-chart-pie mr-1.5 text-emerald-500"></i> สัดส่วนทางการเงิน (Net Assets)
+                    </h3>
+                </div>
+                <div class="relative w-full h-36 lg:h-auto lg:flex-1 flex items-center justify-center">
+                    <canvas id="overviewChart"></canvas>
+                </div>
+            </section>
+            </div>
+
+            <!-- WALLET LIST (DASHBOARD) -->
+            <section class="bg-slate-50/50 rounded-3xl p-1.5 border border-slate-200/50">
+                <div class="flex justify-between items-center px-2 py-1 mb-1.5">
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-wallet mr-1 text-emerald-500"></i> บัญชีและกระเป๋าเงิน</h3>
+                    <button onclick="openSettingsModal()" class="text-[11px] text-emerald-500 hover:underline"><i class="fa-solid fa-plus mr-0.5"></i>จัดการ</button>
+                </div>
+                <div id="dashboardWalletList" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                    <!-- Dynamically Inserted Wallets -->
+                </div>
+            </section>
+
+            <!-- ACTION QUICK BUTTONS -->
+            <section class="grid grid-cols-3 gap-2">
+                <button onclick="openTransactionModal()" class="bg-white hover:bg-slate-50 border border-slate-200/70 p-2.5 rounded-2xl flex flex-col items-center text-center transition-all shadow-sm">
+                    <span class="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-1">
+                        <i class="fa-solid fa-wallet text-sm"></i>
+                    </span>
+                    <span class="text-xs font-semibold text-slate-700">จดรับ/จ่าย</span>
+                </button>
+                <button onclick="openDebtModal()" class="bg-white hover:bg-slate-50 border border-slate-200/70 p-2.5 rounded-2xl flex flex-col items-center text-center transition-all shadow-sm">
+                    <span class="w-9 h-9 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-1">
+                        <i class="fa-solid fa-hand-holding-dollar text-sm"></i>
+                    </span>
+                    <span class="text-xs font-semibold text-slate-700">ตั้งลูกหนี้ใหม่</span>
+                </button>
+                <button onclick="openCreditCardPaymentModal()" class="bg-white hover:bg-slate-50 border border-slate-200/70 p-2.5 rounded-2xl flex flex-col items-center text-center transition-all shadow-sm">
+                    <span class="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-1">
+                        <i class="fa-regular fa-credit-card text-sm"></i>
+                    </span>
+                    <span class="text-xs font-semibold text-slate-700">จ่ายบัตรเครดิต</span>
+                </button>
+            </section>
+            <!-- CATEGORY SPENDING SUMMARY -->
+            <section id="categorySummarySection" class="bg-white rounded-3xl p-4 border border-slate-200/70 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b border-slate-50 pb-2">
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                        <i class="fa-solid fa-chart-pie mr-1.5 text-emerald-500"></i> สรุปรายจ่ายตามหมวดหมู่
+                    </h3>
+                    <span class="text-[10px] text-slate-400 font-medium" id="categorySummaryCycle">รอบบัญชีปัจจุบัน</span>
+                </div>
+                <div id="categorySummaryContainer" class="space-y-2">
+                    <!-- Dynamically populated progress bars of categories -->
+                </div>
+            </section>
+
+        </div>
+
+        <!-- VIEW 2: DEBTORS -->
+        <div id="view-debtors" class="space-y-4 hidden">
+            <!-- LIQUIDITY TIMELINE TRACKER -->
+            <div class="bg-white rounded-2xl border border-slate-200/70 p-4 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b border-slate-50 pb-2">
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wide"><i class="fa-regular fa-calendar-days text-emerald-500 mr-1.5"></i> ไทม์ไลน์สภาพคล่อง 30 วันข้างหน้า</h4>
+                    <span class="text-[10px] text-slate-400 font-medium">เข้า (เขียว) / ออก (แดง)</span>
+                </div>
+                <div id="timelineTrackerContainer" class="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
+                    <!-- Dynamically Inserted horizontal scroll timeline items -->
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center">
+                <div class="flex items-baseline gap-2">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-list-check mr-1.5 text-emerald-500"></i> รายการลูกหนี้</h3>
+                    <span class="text-xs text-slate-400" id="debtorCount">ทั้งหมด 0 คน</span>
+                </div>
+                <button onclick="openDebtModal()" class="bg-gradient-to-b from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-semibold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm">
+                    <i class="fa-solid fa-user-plus"></i> ตั้งลูกหนี้ใหม่
+                </button>
+            </div>
+
+            <!-- Debtor List Grid -->
+            <div id="debtorList" class="space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3">
+                <!-- Dynamically Inserted -->
+            </div>
+        </div>
+
+        <!-- VIEW 3: CREDIT CARDS -->
+        <div id="view-cards" class="space-y-4 hidden">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-credit-card mr-1.5 text-blue-500"></i> บัตรเครดิตและยอดรอตัดชำระ</h3>
+                <button onclick="openCreditCardPaymentModal()" class="bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm">
+                    <i class="fa-regular fa-credit-card"></i> จ่ายบัตรเครดิต
+                </button>
+            </div>
+
+            <div id="creditCardList" class="space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3">
+                <!-- Dynamically Inserted -->
+            </div>
+        </div>
+
+        <!-- VIEW 4: RECURRING -->
+        <div id="view-recurring" class="space-y-4 hidden">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-rotate mr-1.5 text-amber-500"></i> ค่าบริการรายเดือนประจำ (Subscription)</h3>
+                <span class="text-xs text-slate-400" id="recurringCount">ทั้งหมด 0 รายการ</span>
+            </div>
+
+            <div id="recurringList" class="space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3">
+                <!-- Dynamically Inserted -->
+            </div>
+        </div>
+
+        <!-- VIEW 5: TRANSACTION HISTORY -->
+        <div id="view-history" class="space-y-4 hidden">
+            <!-- MONTHLY TREND CHART -->
+            <section class="bg-white rounded-2xl p-4 border border-slate-200/70 shadow-sm space-y-2">
+                <div class="flex justify-between items-center border-b border-slate-50 pb-2">
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                        <i class="fa-solid fa-chart-column mr-1.5 text-emerald-500"></i> แนวโน้มรายรับ-รายจ่าย 6 เดือนล่าสุด
+                    </h3>
+                </div>
+                <div class="relative w-full h-40">
+                    <canvas id="monthlyTrendChart"></canvas>
+                </div>
+            </section>
+
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-receipt mr-1.5 text-slate-500"></i> ประวัติรายการทำธุรกรรมล่าสุด</h3>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="exportTransactionsCSV()" class="bg-white hover:bg-slate-50 border border-slate-200/70 text-slate-600 font-semibold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm" title="ส่งออกเป็น CSV/Excel">
+                        <i class="fa-solid fa-file-arrow-down"></i>
+                    </button>
+                    <button onclick="openTransactionModal()" class="bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm">
+                        <i class="fa-solid fa-plus"></i> จดรับ/จ่าย
+                    </button>
+                </div>
+            </div>
+
+            <div id="transactionHistory" class="bg-white rounded-2xl border border-slate-200/70 divide-y divide-slate-50 overflow-hidden shadow-sm">
+                <!-- Dynamically Inserted -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Bottom tab bar on mobile/tablet, left sidebar nav on desktop (lg+) -->
+    <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200/70 max-w-md mx-auto z-40 shadow-lg rounded-t-2xl pb-safe
+                lg:fixed lg:top-0 lg:bottom-0 lg:left-0 lg:inset-x-auto lg:right-auto lg:w-60 lg:max-w-none lg:mx-0
+                lg:rounded-none lg:border-t-0 lg:border-r lg:shadow-none lg:pb-0 lg:pt-safe lg:overflow-y-auto">
+        <div class="flex justify-around items-center py-2.5 px-2 lg:flex-col lg:items-stretch lg:justify-start lg:h-full lg:px-3 lg:py-4 lg:gap-1">
+            <!-- Desktop-only brand mark at the top of the sidebar -->
+            <div class="hidden lg:flex items-center gap-2 px-2.5 pb-4 mb-2 border-b border-slate-100">
+                <div class="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-lg flex items-center justify-center text-white shadow-sm shrink-0">
+                    <i class="fa-solid fa-scale-balanced text-sm"></i>
+                </div>
+                <span class="font-bold text-slate-900 text-sm tracking-tight">Somdul</span>
+            </div>
+
+            <button onclick="switchMainTab('home')" id="bottomTab-home" class="flex flex-col items-center gap-1 text-emerald-600 bg-emerald-50 rounded-xl px-3 py-1.5 transition-all lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:px-3.5 lg:py-2.5">
+                <i class="fa-solid fa-house text-lg lg:w-5 lg:text-center"></i>
+                <span class="text-[9px] font-bold lg:text-xs lg:font-semibold">หน้าหลัก</span>
+            </button>
+            <button onclick="switchMainTab('debtors')" id="bottomTab-debtors" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 rounded-xl px-3 py-1.5 transition-all lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:px-3.5 lg:py-2.5">
+                <i class="fa-solid fa-users-gear text-lg lg:w-5 lg:text-center"></i>
+                <span class="text-[9px] font-bold lg:text-xs lg:font-semibold">ลูกหนี้</span>
+            </button>
+            <button onclick="switchMainTab('cards')" id="bottomTab-cards" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 rounded-xl px-3 py-1.5 transition-all lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:px-3.5 lg:py-2.5">
+                <i class="fa-solid fa-credit-card text-lg lg:w-5 lg:text-center"></i>
+                <span class="text-[9px] font-bold lg:text-xs lg:font-semibold">บัตรเครดิต</span>
+            </button>
+            <button onclick="switchMainTab('recurring')" id="bottomTab-recurring" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 rounded-xl px-3 py-1.5 transition-all lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:px-3.5 lg:py-2.5">
+                <i class="fa-solid fa-clock-rotate-left text-lg lg:w-5 lg:text-center"></i>
+                <span class="text-[9px] font-bold lg:text-xs lg:font-semibold">รายเดือน</span>
+            </button>
+            <button onclick="switchMainTab('history')" id="bottomTab-history" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 rounded-xl px-3 py-1.5 transition-all lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:px-3.5 lg:py-2.5">
+                <i class="fa-solid fa-receipt text-lg lg:w-5 lg:text-center"></i>
+                <span class="text-[9px] font-bold lg:text-xs lg:font-semibold">ประวัติ</span>
+            </button>
+            <button onclick="openSettingsModal()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 rounded-xl px-3 py-1.5 transition-all lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:px-3.5 lg:py-2.5 lg:mt-2 lg:border-t lg:border-slate-100 lg:pt-4">
+                <i class="fa-solid fa-gear text-lg lg:w-5 lg:text-center"></i>
+                <span class="text-[9px] font-bold lg:text-xs lg:font-semibold">ตั้งค่า</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- LOGIN SCREEN OVERLAY -->
+    <div id="loginScreen" class="fixed inset-0 bg-slate-50 z-[999] flex flex-col justify-center items-center p-4 hidden animate-in fade-in duration-200">
+        <div class="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200/70 shadow-xl space-y-6 text-center">
+            <div class="flex flex-col items-center gap-2">
+                <div class="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                    <i class="fa-solid fa-scale-balanced text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900 mt-2" id="loginTitle">เข้าสู่ระบบ Somdul</h2>
+                <p class="text-xs text-slate-400">บริหารสมดุลการเงิน บัตรเครดิต และลูกหนี้ครบวงจร</p>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-4 text-left">
+                <div id="regNameField" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ชื่อโปรไฟล์</label>
+                    <input type="text" id="loginNameInput" placeholder="เช่น คุณสมชาย" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">อีเมลผู้ใช้งาน</label>
+                    <input type="email" required id="loginEmailInput" placeholder="demo@somdul.com" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">รหัสผ่าน</label>
+                    <input type="password" required id="loginPasswordInput" oninput="checkRegisterPasswordStrength(this.value)" placeholder="••••••••" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                    <div id="passwordStrengthWrapper" class="hidden mt-1.5 space-y-1">
+                        <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                            <div id="strengthBar" class="h-full transition-all duration-300 w-0 bg-rose-500"></div>
+                        </div>
+                        <span id="strengthText" class="text-[10px] text-slate-400">ระดับความปลอดภัย: แย่มาก (ต้องการความยาว 6 ตัว ขึ้นไป ตัวเลข และสัญลักษณ์)</span>
+                    </div>
+                </div>
+
+                <div class="space-y-2 pt-2">
+                    <button type="submit" id="loginSubmitBtn" class="w-full bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-emerald-200 text-sm text-center block">
+                        เข้าสู่ระบบ
+                    </button>
+                    <button type="button" onclick="quickDemoLogin()" class="w-full bg-gradient-to-b from-slate-800 to-slate-950 hover:from-slate-900 hover:to-black text-white font-bold py-3 rounded-xl transition-colors text-sm text-center block">
+                        ทดลองเข้าใช้งานด่วน (Demo)
+                    </button>
+                </div>
+            </form>
+
+            <div class="text-xs text-slate-400 border-t border-slate-200/70 pt-4 flex justify-between">
+                <span id="loginToggleText">ยังไม่มีบัญชีใช้งาน?</span>
+                <button onclick="toggleRegisterMode()" id="loginToggleBtn" class="text-emerald-600 font-bold hover:underline">สมัครสมาชิกใหม่</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 1: ADD TRANSACTION (รายรับ / รายจ่าย) -->
+    <div id="transactionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden" onclick="if(event.target===this) closeTransactionModal()">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-file-invoice-dollar mr-2 text-emerald-500"></i> จดบันทึก รายรับ/รายจ่าย</h3>
+                <button onclick="closeTransactionModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <form id="transactionForm" onsubmit="handleTransactionSubmit(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                    <button type="button" id="txTypeExpense" onclick="setTxType('EXPENSE')" class="py-2 text-center text-xs font-semibold rounded-lg bg-white text-slate-800 shadow-sm transition-all">รายจ่าย</button>
+                    <button type="button" id="txTypeIncome" onclick="setTxType('INCOME')" class="py-2 text-center text-xs font-semibold rounded-lg text-slate-400 transition-all">รายรับ</button>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">จำนวนเงิน (บาท)</label>
+                    <input type="number" step="0.01" required id="txAmount" placeholder="0.00" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-lg text-slate-800">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">เลือกรายการด่วน (Quick Select)</label>
+                    <select id="txQuickDesc" onchange="applyQuickDesc()" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">รายละเอียด / คำอธิบาย</label>
+                    <input type="text" required id="txDesc" placeholder="เช่น ค่าข้าวกลางวัน, เงินเดือนออก" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">หมวดหมู่</label>
+                    <select id="txCategory" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ผ่านกระเป๋าเงิน / แหล่งเงิน</label>
+                    <select id="txWallet" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-emerald-200 text-sm">
+                    บันทึกข้อมูล
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ADD DEBTOR (ตั้งลูกหนี้ใหม่) -->
+    <div id="debtModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden" onclick="if(event.target===this) closeDebtModal()">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-user-plus mr-2 text-rose-500"></i> ตั้งวงหนี้ / ลูกหนี้ใหม่</h3>
+                <button onclick="closeDebtModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <form id="debtForm" onsubmit="handleDebtSubmit(event)" class="space-y-4">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="debtSplitMode" onchange="toggleDebtSplitMode()" class="w-4 h-4 rounded border-slate-300 text-rose-500 focus:ring-rose-500">
+                    <label for="debtSplitMode" class="text-xs font-semibold text-slate-600">แชร์บิลนี้ให้หลายคนพร้อมกัน (หารยอดเท่าๆ กันอัตโนมัติ)</label>
+                </div>
+
+                <div id="debtSingleNameWrapper">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ชื่อลูกหนี้ / เพื่อนที่ยืม</label>
+                    <input type="text" id="debtorName" placeholder="ระบุชื่อ เช่น เพื่อนบอย, เอสที่ทำงาน" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                </div>
+
+                <div id="debtSplitNamesWrapper" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">รายชื่อคนที่ร่วมแชร์บิล (ขึ้นบรรทัดใหม่ทีละคน)</label>
+                    <textarea id="debtSplitNames" rows="3" placeholder="เพื่อนบอย&#10;เอส&#10;น้องบิว" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm"></textarea>
+                    <p class="text-[10px] text-slate-400 mt-1">ยอดรวมด้านล่างจะถูกหารเท่าๆ กันให้แต่ละคนโดยอัตโนมัติ</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ประเภทหนี้และการชำระ</label>
+                    <select id="debtType" onchange="toggleDebtTypeInputs()" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                        <option value="CASH_LOAN">💸 ยืมเงินสดทั่วไป (จ่ายก้อนเดียวคืน)</option>
+                        <option value="INSTALLMENT">🗓️ ผ่อนจ่ายรายเดือน (เป็นยอดงวดๆ เช่น ดอกเบี้ย/แชร์จ่าย)</option>
+                        <option value="CREDIT_CARD_INSTALLMENT">💳 รูดบัตรแทนเพื่อน และตกลงให้เพื่อนผ่อนคืน</option>
+                        <option value="SHARED_SUBSCRIPTION">🔄 แชร์ค่าบริการรายเดือน (เช่น Netflix, YouTube, Spotify)</option>
+                    </select>
+                </div>
+
+                <!-- Conditional Input: If CREDIT_CARD_INSTALLMENT is selected -->
+                <div id="creditCardSelectWrapper" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">รูดผ่านบัตรเครดิตใบไหน</label>
+                    <select id="debtCardId" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <!-- Conditional Input: If SHARED_SUBSCRIPTION is selected -->
+                <div id="subscriptionSelectWrapper" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ผูกกับบริการรายเดือนหลัก (เพื่ออัปเดตหนี้เมื่อผู้ใช้จ่ายบิล)</label>
+                    <select id="debtLinkedSubscriptionId" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label id="debtAmountLabel" class="block text-xs font-semibold text-slate-500 mb-1">จำนวนเงินต้นทั้งหมด</label>
+                        <input type="number" required id="debtAmount" placeholder="0.00" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 font-semibold text-slate-800 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1" id="installmentLabel">จำนวนงวดที่ผ่อนชำระ</label>
+                        <input type="number" required id="debtInstallments" value="1" min="1" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">วันกำหนดชำระคืนของทุกเดือน (วันที่ 1-31)</label>
+                    <input type="number" required id="debtDueDay" min="1" max="31" value="25" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">หมายเหตุ / ผ่อนอะไร</label>
+                    <input type="text" id="debtMemo" placeholder="เช่น ค่าตั๋วคอนเสิร์ต, หุ้นค่า iPad Pro" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-b from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-rose-200 text-sm">
+                    ลงบันทึกยอดหนี้
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: CREDIT CARD PAYMENT (เคลียร์บิลชำระบัตรเครดิต) -->
+    <div id="creditCardPaymentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden" onclick="if(event.target===this) closeCreditCardPaymentModal()">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-credit-card mr-2 text-blue-500"></i> ชำระหนี้รอบบิลบัตรเครดิต</h3>
+                <button onclick="closeCreditCardPaymentModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <form id="ccPaymentForm" onsubmit="handleCCPaymentSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">เลือกบัตรเครดิตที่ต้องการเคลียร์ยอด</label>
+                    <select id="ccPaymentCardId" onchange="updateCCPaymentMax()" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-semibold text-slate-500">จำนวนเงินที่ชำระคืน (บาท)</label>
+                        <span class="text-xs text-blue-600 font-semibold cursor-pointer" onclick="fillCCMaxAmount()">จ่ายเต็มยอดค้าง</span>
+                    </div>
+                    <input type="number" step="0.01" required id="ccPaymentAmount" placeholder="0.00" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">จ่ายจากบัญชี / แหล่งเงินต้นทาง</label>
+                    <select id="ccPaymentWallet" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-blue-200 text-sm">
+                    ยืนยันการจ่ายเงินบัตรเครดิต
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: DEBTOR SHAREABLE SLIP (ส่งการ์ดทวงหนี้) -->
+    <div id="shareSlipModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center z-50 p-4 hidden" onclick="if(event.target===this) closeShareSlipModal()">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeShareSlipModal()" class="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white border border-slate-200/70 flex items-center justify-center text-slate-500 shadow-md"><i class="fa-solid fa-xmark"></i></button>
+            
+            <div class="text-center mb-4">
+                <span class="bg-indigo-50 text-indigo-600 text-xs font-semibold px-3 py-1 rounded-full"><i class="fa-regular fa-paper-plane mr-1"></i> แชร์สรุปยอดพาร์ตเนอร์</span>
+                <p class="text-[11px] text-slate-400 mt-1">คัดลอกคำทวงหรือดาวน์โหลดรูปภาพเพื่อส่งใน Line ได้อย่างน่ารักและเป็นสุภาพชน</p>
+            </div>
+
+            <!-- THE SLIP TO BE TAKEN / SHARED -->
+            <div id="slipArea" class="bg-slate-50 rounded-2xl p-5 border border-dashed border-slate-300 relative text-left">
+                <!-- Watermark Background Logo -->
+                <div class="absolute right-4 top-4 text-emerald-500/10 text-6xl pointer-events-none">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                </div>
+
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-200/60 pb-3">
+                    <div class="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white text-xs">
+                        <i class="fa-solid fa-scale-balanced"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-800">Somdul Card</h4>
+                        <span class="text-[9px] text-slate-400">บันทึกช่วยเตือนความจำ</span>
+                    </div>
+                </div>
+
+                <div class="space-y-3 text-xs text-slate-700">
+                    <div>
+                        <span class="text-[10px] text-slate-400 block">ถึงคุณพาร์ทเนอร์คนสำคัญ:</span>
+                        <span class="font-bold text-slate-800 text-sm" id="slipDebtorName">เพื่อนบอย</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <span class="text-[10px] text-slate-400 block">ประเภทรายการ:</span>
+                            <span class="font-semibold text-slate-700" id="slipDebtType">ผ่อนสินค้าผ่านบัตร</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block">รายการอ้างอิง:</span>
+                            <span class="font-semibold text-slate-700" id="slipDebtMemo">ค่า iPad Air</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl p-3 border border-slate-200/70 text-center my-2">
+                        <span class="text-[9px] text-slate-400 block uppercase font-semibold">ยอดโอนที่สะดวกคืนรอบนี้</span>
+                        <span class="text-2xl font-bold text-emerald-600" id="slipAmountToPay">฿1,500.00</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5" id="slipInstallmentProgress">งวดที่ 2 / 10 งวด</span>
+                    </div>
+
+                    <!-- PromptPay QR + account (only shown if the user has set these up in Settings) -->
+                    <div id="slipPromptPaySection" class="bg-white rounded-xl p-3 border border-slate-200/70 text-center hidden">
+                        <span class="text-[9px] text-slate-400 block uppercase font-semibold mb-1.5">สแกนจ่ายผ่านพร้อมเพย์</span>
+                        <img id="slipPromptPayQr" src="" alt="PromptPay QR" class="w-28 h-28 mx-auto rounded-lg border border-slate-100 object-contain hidden">
+                        <span id="slipPromptPayAccount" class="text-xs font-semibold text-slate-700 block mt-1.5"></span>
+                    </div>
+
+                    <div class="text-[10px] text-slate-400 text-center italic border-t border-slate-200/60 pt-2.5">
+                        "ขอบคุณนะที่ช่วยแบ่งเบายอดกัน รักษาความสมดุลทางการเงินของพวกเรา ❤️"
+                    </div>
+                </div>
+            </div>
+
+            <!-- ACTION BUTTONS IN MODAL -->
+            <div class="grid grid-cols-2 gap-3 mt-4">
+                <button onclick="copySlipText()" class="bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors">
+                    <i class="fa-regular fa-copy"></i> คัดลอกข้อความ
+                </button>
+                <button onclick="downloadSlipImage()" class="bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors">
+                    <i class="fa-regular fa-image"></i> ดาวน์โหลดการ์ด (PNG)
+                </button>
+            </div>
+            
+            <p id="shareStatusMsg" class="text-center text-[10px] text-emerald-600 font-medium mt-2 opacity-0 transition-opacity duration-300">คัดลอกข้อความทวงอย่างเป็นทางการไปยังคลิปบอร์ดแล้ว!</p>
+        </div>
+    </div>
+
+    <!-- MODAL 5: RECEIVE PAYBACK (บันทึกรับเงินคืนแบบละเอียด) -->
+    <div id="receivePaybackModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden" onclick="if(event.target===this) closeReceivePaybackModal()">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-hand-holding-dollar mr-2 text-emerald-500"></i> บันทึกรับชำระเงินคืน</h3>
+                <button onclick="closeReceivePaybackModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <form id="receivePaybackForm" onsubmit="handleReceivePaybackSubmit(event)" class="space-y-4">
+                <input type="hidden" id="paybackDebtorId">
+                <div>
+                    <span class="text-xs text-slate-400 block">จากลูกหนี้:</span>
+                    <span class="font-bold text-slate-800 text-sm" id="paybackDebtorName">-</span>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200/70">
+                    <div>
+                        <span class="text-slate-400 block">ยอดหนี้ค้างรวม:</span>
+                        <span class="font-bold text-slate-700" id="paybackTotalOwed">฿0.00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block">จำนวนงวดคงเหลือ:</span>
+                        <span class="font-bold text-slate-700" id="paybackInstallmentsLeft">0 งวด</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">จำนวนเงินที่ได้รับคืนจริง (บาท)</label>
+                    <input type="number" step="0.01" required id="paybackAmount" placeholder="0.00" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-slate-800 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">โอนเข้าบัญชี / กระเป๋าเงินสด</label>
+                    <select id="paybackWallet" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-emerald-200 text-sm">
+                    ยืนยันการรับชำระเงิน
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 6: PAY RECURRING (ยืนยันจ่ายค่าบริการรายเดือน) -->
+    <div id="payRecurringModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden" onclick="if(event.target===this) closePayRecurringModal()">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-clock-rotate-left mr-2 text-amber-500"></i> ชำระค่าบริการรายเดือน</h3>
+                <button onclick="closePayRecurringModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <form id="payRecurringForm" onsubmit="handlePayRecurringSubmit(event)" class="space-y-4">
+                <input type="hidden" id="payRecurringId">
+                <div class="space-y-1">
+                    <span class="text-xs text-slate-400 block">รายการค่าใช้จ่าย:</span>
+                    <span class="font-bold text-slate-800 text-sm" id="payRecurringName">-</span>
+                    <span class="font-bold text-rose-500 text-lg block" id="payRecurringAmount">฿0.00</span>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">จ่ายผ่านกระเป๋า / บัญชี</label>
+                    <select id="payRecurringWallet" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-amber-200 text-sm">
+                    ยืนยันการจ่ายเงิน
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 7: SETTINGS & CRUD -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden" onclick="if(event.target===this) closeSettingsModal()">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md md:max-w-2xl w-full p-6 animate-in slide-in-from-bottom duration-200 max-h-[85vh] md:max-h-[75vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 shrink-0">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-gear mr-2 text-slate-600"></i> ตั้งค่าและการจัดการข้อมูล</h3>
+                <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="flex-1 min-h-0 flex flex-col md:flex-row md:gap-5">
+                <!-- Settings Tabs: horizontal scroll strip on mobile, vertical list on tablet/desktop -->
+                <div class="flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible pb-2 md:pb-0 mb-3 md:mb-0 -mx-1 px-1 md:mx-0 md:px-0 md:w-40 md:shrink-0 md:border-r md:border-slate-100 md:pr-4 text-xs shrink-0">
+                    <button onclick="switchSettingsTab('wallets')" id="setTabBtn-wallets" class="shrink-0 md:shrink md:w-full flex items-center justify-center md:justify-start gap-2 px-3.5 py-2 md:py-2.5 text-center md:text-left font-semibold rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 whitespace-nowrap transition-colors">
+                        <i class="fa-solid fa-wallet w-4 text-center"></i> กระเป๋าเงิน
+                    </button>
+                    <button onclick="switchSettingsTab('cards')" id="setTabBtn-cards" class="shrink-0 md:shrink md:w-full flex items-center justify-center md:justify-start gap-2 px-3.5 py-2 md:py-2.5 text-center md:text-left font-semibold rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 whitespace-nowrap transition-colors">
+                        <i class="fa-regular fa-credit-card w-4 text-center"></i> บัตรเครดิต
+                    </button>
+                    <button onclick="switchSettingsTab('budgets')" id="setTabBtn-budgets" class="shrink-0 md:shrink md:w-full flex items-center justify-center md:justify-start gap-2 px-3.5 py-2 md:py-2.5 text-center md:text-left font-semibold rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 whitespace-nowrap transition-colors">
+                        <i class="fa-solid fa-chart-pie w-4 text-center"></i> งบประมาณ
+                    </button>
+                    <button onclick="switchSettingsTab('categories')" id="setTabBtn-categories" class="shrink-0 md:shrink md:w-full flex items-center justify-center md:justify-start gap-2 px-3.5 py-2 md:py-2.5 text-center md:text-left font-semibold rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 whitespace-nowrap transition-colors">
+                        <i class="fa-solid fa-tags w-4 text-center"></i> หมวดหมู่
+                    </button>
+                    <button onclick="switchSettingsTab('system')" id="setTabBtn-system" class="shrink-0 md:shrink md:w-full flex items-center justify-center md:justify-start gap-2 px-3.5 py-2 md:py-2.5 text-center md:text-left font-semibold rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 whitespace-nowrap transition-colors">
+                        <i class="fa-solid fa-sliders w-4 text-center"></i> ระบบ
+                    </button>
+                    <button onclick="switchSettingsTab('profile')" id="setTabBtn-profile" class="shrink-0 md:shrink md:w-full flex items-center justify-center md:justify-start gap-2 px-3.5 py-2 md:py-2.5 text-center md:text-left font-semibold rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 whitespace-nowrap transition-colors">
+                        <i class="fa-solid fa-user w-4 text-center"></i> ผู้ใช้งาน
+                    </button>
+                </div>
+
+            <!-- Settings Tab Content (Scrollable) -->
+            <div class="flex-1 min-w-0 overflow-y-auto pr-1 space-y-4 text-xs">
+                <!-- WALLET SETTINGS -->
+                <div id="setTab-wallets" class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-slate-700">รายชื่อบัญชี/กระเป๋าเงิน</span>
+                        <button onclick="showAddWalletForm()" class="bg-emerald-500 text-white px-2.5 py-1 rounded-lg hover:bg-emerald-600 transition-colors"><i class="fa-solid fa-plus mr-1"></i>เพิ่มกระเป๋า</button>
+                    </div>
+                    
+                    <!-- Add/Edit Wallet Form -->
+                    <div id="walletFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                        <h4 id="walletFormTitle" class="font-bold text-slate-800">เพิ่มกระเป๋าเงินใหม่</h4>
+                        <input type="hidden" id="editWalletId">
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">ชื่อกระเป๋าเงิน / บัญชี</label>
+                                <input type="text" id="setWalletName" placeholder="เช่น บัญชีเงินฝาก SCB" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">ประเภทกระเป๋า</label>
+                                    <select id="setWalletType" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                        <option value="CASH">CASH (เงินสด)</option>
+                                        <option value="BANK">BANK (ธนาคาร)</option>
+                                        <option value="E_WALLET">E_WALLET (เงินอิเล็กทรอนิกส์)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">ยอดเงินคงเหลือ</label>
+                                    <input type="number" step="0.01" id="setWalletBalance" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 justify-end">
+                            <button onclick="hideWalletForm()" class="bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg">ยกเลิก</button>
+                            <button onclick="saveWalletSubmit()" class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg">บันทึก</button>
+                        </div>
+                    </div>
+
+                    <div id="settingsWalletList" class="divide-y divide-slate-100 border border-slate-200/70 rounded-xl bg-white overflow-hidden">
+                        <!-- Dynamically Loaded -->
+                    </div>
+                </div>
+
+                <!-- CREDIT CARD SETTINGS -->
+                <div id="setTab-cards" class="space-y-3 hidden">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-slate-700">รายชื่อบัตรเครดิต</span>
+                        <button onclick="showAddCardForm()" class="bg-blue-500 text-white px-2.5 py-1 rounded-lg hover:bg-blue-600 transition-colors"><i class="fa-solid fa-plus mr-1"></i>เพิ่มบัตร</button>
+                    </div>
+                    
+                    <!-- Add/Edit Card Form -->
+                    <div id="cardFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                        <h4 id="cardFormTitle" class="font-bold text-slate-800">เพิ่มบัตรเครดิตใหม่</h4>
+                        <input type="hidden" id="editCardId">
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">ชื่อบัตรเครดิต</label>
+                                <input type="text" id="setCardName" placeholder="เช่น KTC Platinum" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">วงเงินบัตร</label>
+                                    <input type="number" step="0.01" id="setCardLimit" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">ยอดหนี้รอชำระปัจจุบัน</label>
+                                    <input type="number" step="0.01" id="setCardBalance" value="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">วันตัดรอบบิล (1-31)</label>
+                                    <input type="number" min="1" max="31" id="setCardBillingDay" placeholder="10" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">วันกำหนดชำระจริง (1-31)</label>
+                                    <input type="number" min="1" max="31" id="setCardDueDay" placeholder="25" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 justify-end">
+                            <button onclick="hideCardForm()" class="bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg">ยกเลิก</button>
+                            <button onclick="saveCardSubmit()" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg">บันทึก</button>
+                        </div>
+                    </div>
+
+                    <div id="settingsCardList" class="divide-y divide-slate-100 border border-slate-200/70 rounded-xl bg-white overflow-hidden">
+                        <!-- Dynamically Loaded -->
+                    </div>
+                </div>
+
+                <!-- BUDGET SETTINGS -->
+                <div id="setTab-budgets" class="space-y-3 hidden">
+                    <span class="font-bold text-slate-700 block">ตั้งงบประมาณรายเดือนต่อหมวดหมู่</span>
+                    <p class="text-[11px] text-slate-500 leading-normal">กำหนดวงเงินที่ตั้งใจจะใช้จ่ายต่อเดือนในแต่ละหมวดหมู่ ระบบจะขึ้นแถบสีแดงเตือนในหน้าหลักเมื่อใช้จ่ายเกินงบ</p>
+                    <div id="settingsBudgetList" class="space-y-2">
+                        <!-- Dynamically Loaded -->
+                    </div>
+                </div>
+
+                <!-- CATEGORY & QUICK-SELECT SETTINGS -->
+                <div id="setTab-categories" class="space-y-5 hidden">
+                    <!-- Categories -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-slate-700">หมวดหมู่รายรับ-รายจ่าย</span>
+                            <button onclick="showAddCategoryForm()" class="bg-emerald-500 text-white px-2.5 py-1 rounded-lg hover:bg-emerald-600 transition-colors"><i class="fa-solid fa-plus mr-1"></i>เพิ่มหมวดหมู่</button>
+                        </div>
+
+                        <div id="categoryFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                            <h4 id="categoryFormTitle" class="font-bold text-slate-800">เพิ่มหมวดหมู่ใหม่</h4>
+                            <input type="hidden" id="editCategoryId">
+                            <div class="space-y-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">ชื่อหมวดหมู่</label>
+                                    <input type="text" id="setCategoryName" placeholder="เช่น เลี้ยงแมว, ค่าเทอมลูก" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">ประเภท</label>
+                                    <select id="setCategoryType" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                        <option value="EXPENSE">รายจ่าย</option>
+                                        <option value="INCOME">รายรับ</option>
+                                    </select>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 items-end">
+                                    <div>
+                                        <label class="block text-[10px] text-slate-500 mb-0.5">ไอคอน</label>
+                                        <select id="setCategoryIcon" onchange="updateCategoryPreview()" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                            <option value="fa-tag">ป้ายกำกับ</option>
+                                            <option value="fa-utensils">อาหาร</option>
+                                            <option value="fa-mug-hot">เครื่องดื่ม</option>
+                                            <option value="fa-car">รถยนต์</option>
+                                            <option value="fa-gas-pump">น้ำมัน</option>
+                                            <option value="fa-bag-shopping">ช้อปปิ้ง</option>
+                                            <option value="fa-shirt">เสื้อผ้า</option>
+                                            <option value="fa-play">สตรีมมิ่ง</option>
+                                            <option value="fa-film">หนัง/บันเทิง</option>
+                                            <option value="fa-house-chimney">ที่พัก</option>
+                                            <option value="fa-heart-pulse">สุขภาพ</option>
+                                            <option value="fa-dumbbell">ออกกำลังกาย</option>
+                                            <option value="fa-paw">สัตว์เลี้ยง</option>
+                                            <option value="fa-graduation-cap">การศึกษา</option>
+                                            <option value="fa-plane">เดินทาง/ท่องเที่ยว</option>
+                                            <option value="fa-gift">ของขวัญ</option>
+                                            <option value="fa-mobile-screen">มือถือ/อินเทอร์เน็ต</option>
+                                            <option value="fa-hand-holding-dollar">ให้ยืม/หนี้สิน</option>
+                                            <option value="fa-piggy-bank">ออมเงิน</option>
+                                            <option value="fa-briefcase">งาน/ธุรกิจ</option>
+                                            <option value="fa-money-bill-wave">เงินเดือน</option>
+                                            <option value="fa-rotate-left">เงินคืน</option>
+                                            <option value="fa-store">ร้านค้า</option>
+                                            <option value="fa-coins">รายได้อื่นๆ</option>
+                                            <option value="fa-ellipsis">อื่นๆ</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] text-slate-500 mb-0.5">สี</label>
+                                        <select id="setCategoryColor" onchange="updateCategoryPreview()" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                            <option value="emerald">เขียวมรกต</option>
+                                            <option value="amber">เหลืองอำพัน</option>
+                                            <option value="blue">น้ำเงิน</option>
+                                            <option value="purple">ม่วง</option>
+                                            <option value="red">แดง</option>
+                                            <option value="indigo">คราม</option>
+                                            <option value="rose">ชมพูกุหลาบ</option>
+                                            <option value="teal">เขียวหัวเป็ด</option>
+                                            <option value="cyan">ฟ้าอมเขียว</option>
+                                            <option value="orange">ส้ม</option>
+                                            <option value="yellow">เหลือง</option>
+                                            <option value="pink">ชมพู</option>
+                                            <option value="lime">เขียวมะนาว</option>
+                                            <option value="sky">ฟ้า</option>
+                                            <option value="slate">เทา</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 pt-1">
+                                    <span class="text-[10px] text-slate-400">ตัวอย่าง:</span>
+                                    <span id="categoryPreviewIcon" class="w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-500/10 text-emerald-600"><i class="fa-solid fa-tag text-xs"></i></span>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 justify-end">
+                                <button onclick="hideCategoryForm()" class="bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg">ยกเลิก</button>
+                                <button onclick="saveCategorySubmit()" class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg">บันทึก</button>
+                            </div>
+                        </div>
+
+                        <div id="settingsCategoryList" class="divide-y divide-slate-100 border border-slate-200/70 rounded-xl bg-white overflow-hidden">
+                            <!-- Dynamically Loaded -->
+                        </div>
+                    </div>
+
+                    <!-- Quick Templates -->
+                    <div class="space-y-3 border-t border-slate-100 pt-4">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-slate-700">รายการลัด (Quick Select)</span>
+                            <button onclick="showAddQuickTemplateForm()" class="bg-emerald-500 text-white px-2.5 py-1 rounded-lg hover:bg-emerald-600 transition-colors"><i class="fa-solid fa-plus mr-1"></i>เพิ่มรายการลัด</button>
+                        </div>
+                        <p class="text-[11px] text-slate-500 leading-normal">รายการลัดจะขึ้นในเมนู "เลือกรายการด่วน" ตอนจดบันทึกรายรับ/รายจ่าย เพื่อกรอกคำอธิบายและหมวดหมู่ให้อัตโนมัติ</p>
+
+                        <div id="quickTemplateFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                            <h4 id="quickTemplateFormTitle" class="font-bold text-slate-800">เพิ่มรายการลัดใหม่</h4>
+                            <input type="hidden" id="editQuickTemplateId">
+                            <div class="space-y-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">ป้ายชื่อในเมนู (ใส่อีโมจิได้)</label>
+                                    <input type="text" id="setTemplateLabel" placeholder="เช่น 🐱 ซื้ออาหารแมว" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">คำอธิบายที่จะกรอกอัตโนมัติ</label>
+                                    <input type="text" id="setTemplateDescription" placeholder="เช่น ค่าอาหารแมวรายเดือน" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">หมวดหมู่ที่จะเลือกให้อัตโนมัติ</label>
+                                    <select id="setTemplateCategory" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                        <!-- Dynamically populated from CATEGORIES -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 justify-end">
+                                <button onclick="hideQuickTemplateForm()" class="bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg">ยกเลิก</button>
+                                <button onclick="saveQuickTemplateSubmit()" class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg">บันทึก</button>
+                            </div>
+                        </div>
+
+                        <div id="settingsQuickTemplateList" class="divide-y divide-slate-100 border border-slate-200/70 rounded-xl bg-white overflow-hidden">
+                            <!-- Dynamically Loaded -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SYSTEM SETTINGS -->
+                <div id="setTab-system" class="space-y-4 hidden py-2">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <h4 class="font-bold text-slate-800"><i class="fa-solid fa-text-height mr-1 text-slate-600"></i> ขนาดตัวอักษร</h4>
+                        <p class="text-[11px] text-slate-500 leading-normal">ปรับขนาดตัวอักษรและองค์ประกอบทั้งแอปให้อ่านง่ายขึ้น การตั้งค่านี้จะถูกจดจำไว้ในเครื่องนี้</p>
+                        <div id="fontSizePicker" class="grid grid-cols-4 gap-2">
+                            <button onclick="setFontSize(87.5)" data-font-scale="87.5" class="py-2 rounded-lg border border-slate-200 text-center transition-colors">
+                                <span class="block text-xs font-bold">เล็ก</span>
+                            </button>
+                            <button onclick="setFontSize(100)" data-font-scale="100" class="py-2 rounded-lg border border-slate-200 text-center transition-colors">
+                                <span class="block text-sm font-bold">ปกติ</span>
+                            </button>
+                            <button onclick="setFontSize(112.5)" data-font-scale="112.5" class="py-2 rounded-lg border border-slate-200 text-center transition-colors">
+                                <span class="block text-base font-bold">ใหญ่</span>
+                            </button>
+                            <button onclick="setFontSize(125)" data-font-scale="125" class="py-2 rounded-lg border border-slate-200 text-center transition-colors">
+                                <span class="block text-lg font-bold">ใหญ่มาก</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <h4 class="font-bold text-slate-800"><i class="fa-solid fa-server mr-1 text-slate-600"></i> จัดการระบบการเชื่อมต่อ</h4>
+                        <p class="text-[11px] text-slate-500 leading-normal">จัดการเซสชันการเข้าใช้งานบัญชีของคุณจากส่วนนี้</p>
+                        
+                        <div class="space-y-2 pt-2">
+                            <button onclick="handleLogout()" class="w-full bg-rose-500 text-white hover:bg-rose-600 py-2.5 rounded-xl font-bold transition-colors flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ (Log Out)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- USER PROFILE SETTINGS -->
+                <div id="setTab-profile" class="space-y-4 hidden py-2">
+                    <!-- Update Profile Section -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <h4 class="font-bold text-slate-800"><i class="fa-solid fa-user-gear mr-1 text-emerald-500"></i> แก้ไขข้อมูลส่วนตัว</h4>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">ชื่อโปรไฟล์</label>
+                                <input type="text" id="setProfileName" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">อีเมล</label>
+                                <input type="email" id="setProfileEmail" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                            </div>
+                        </div>
+                        <button onclick="handleUpdateProfileSubmit()" class="w-full bg-emerald-500 text-white hover:bg-emerald-600 py-2.5 rounded-xl font-bold transition-colors text-xs shadow-sm">
+                            บันทึกข้อมูลส่วนตัว
+                        </button>
+                    </div>
+
+                    <!-- PromptPay Setup Section -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <h4 class="font-bold text-slate-800"><i class="fa-solid fa-qrcode mr-1 text-indigo-500"></i> ตั้งค่าพร้อมเพย์สำหรับรับชำระ</h4>
+                        <p class="text-[11px] text-slate-500 leading-normal">ข้อมูลนี้จะแสดงในสลิปทวงหนี้ที่แชร์ให้เพื่อน เพื่อให้โอนเงินคืนได้สะดวกขึ้น</p>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">เบอร์โทร/เลขบัตรประชาชนพร้อมเพย์</label>
+                                <input type="text" id="setPromptPayAccount" placeholder="เช่น 081-234-5678" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">รูป QR พร้อมเพย์ (อัปโหลดจากแอปธนาคาร)</label>
+                                <div class="flex items-center gap-3">
+                                    <div id="promptPayQrPreview" class="w-16 h-16 rounded-lg border border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0">
+                                        <i class="fa-solid fa-qrcode text-slate-300 text-xl"></i>
+                                    </div>
+                                    <div class="flex-1 space-y-1 min-w-0">
+                                        <input type="file" accept="image/*" id="setPromptPayQrFile" onchange="handlePromptPayQrSelect(event)" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                        <button type="button" onclick="clearPromptPayQr()" id="clearPromptPayQrBtn" class="hidden text-[10px] text-rose-500 hover:underline">ลบรูป QR</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="savePromptPaySubmit()" class="w-full bg-indigo-500 text-white hover:bg-indigo-600 py-2.5 rounded-xl font-bold transition-colors text-xs shadow-sm">
+                            บันทึกข้อมูลพร้อมเพย์
+                        </button>
+                    </div>
+
+                    <!-- Change Password Section -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <h4 class="font-bold text-slate-800"><i class="fa-solid fa-key mr-1 text-rose-500"></i> เปลี่ยนรหัสผ่าน</h4>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">รหัสผ่านเดิม</label>
+                                <input type="password" id="setProfileOldPassword" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">รหัสผ่านใหม่</label>
+                                <input type="password" id="setProfileNewPassword" oninput="checkChangePasswordStrength(this.value)" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500">
+                                <div id="changePasswordStrengthWrapper" class="mt-1.5 space-y-1">
+                                    <div class="h-1 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                                        <div id="changeStrengthBar" class="h-full transition-all duration-300 w-0 bg-rose-500"></div>
+                                    </div>
+                                    <span id="changeStrengthText" class="text-[9px] text-slate-400">ระดับความปลอดภัย: แย่มาก (ต้องการความยาว 6 ตัว ขึ้นไป ตัวเลข และสัญลักษณ์)</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">ยืนยันรหัสผ่านใหม่</label>
+                                <input type="password" id="setProfileConfirmPassword" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500">
+                            </div>
+                        </div>
+                        <button onclick="handleChangePasswordSubmit()" class="w-full bg-rose-500 text-white hover:bg-rose-600 py-2.5 rounded-xl font-bold transition-colors text-xs shadow-sm">
+                            เปลี่ยนรหัสผ่าน
+                        </button>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 8: APP INFO & ABOUT -->
+    <div id="infoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 hidden" onclick="if(event.target===this) toggleInfoModal()">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="toggleInfoModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            
+            <h3 class="text-lg font-bold text-slate-900 mb-3"><i class="fa-solid fa-circle-question text-emerald-500 mr-1.5"></i> วิธีใช้งานแอป "Somdul" ฉบับสมบูรณ์</h3>
+            <div class="space-y-3 text-xs text-slate-600 leading-relaxed overflow-y-auto max-h-[60vh] pr-1">
+                <p>ยินดีต้อนรับสู่ระบบบริหารสมดุลการเงิน **"สมดุล"** ครับ ระบบรองรับการวิเคราะห์คำนวณกระแสเงินสดและทวงถามยอดผ่อนชำระค้างคืนอย่างแม่นยำดังนี้:</p>
+                
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
+                    <strong class="text-emerald-700 block mb-0.5"><i class="fa-solid fa-bolt mr-1"></i> สูตรคำนวณ Safe-to-Spend:</strong>
+                    ตัวเลขใหญ่สุดที่แสดงบนบัตรคิดจาก: 
+                    <div class="font-mono bg-slate-100 p-1.5 rounded mt-1 text-[11px] text-slate-700">
+                        เงินสดในกระเป๋า + ลูกหนี้ค้างคืน - ยอดหนี้บัตรเครดิต - ค่าบริการรายเดือนซ้ำๆ
+                    </div>
+                </div>
+
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
+                    <strong class="text-emerald-700 block mb-0.5"><i class="fa-regular fa-calendar-days mr-1"></i> ไทม์ไลน์สภาพคล่อง 30 วันข้างหน้า:</strong>
+                    ระบบจะคำนวณวันกำหนดชำระเงินของยอดรับคืนหนี้ (สีเขียว), บิลบัตรเครดิตที่ต้องไปจ่าย (สีแดง) และค่าบริการรายเดือน (สีส้ม/แดง) ใน 30 วันข้างหน้าแบบเรียลไทม์ เพื่อช่วยให้คุณบริหารสภาพคล่องล่วงหน้าไม่ให้ติดลบ!
+                </div>
+
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
+                    <strong class="text-indigo-700 block mb-0.5"><i class="fa-regular fa-paper-plane mr-1"></i> ดาวน์โหลดการ์ดภาพทวงหนี้แบบสุภาพ:</strong>
+                    ที่รายการลูกหนี้ ลองกดปุ่ม <span class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-[10px] font-semibold">แชร์สลิปทวง</span> คุณสามารถกดดาวน์โหลดไฟล์ภาพ PNG คมชัดเพื่อส่งให้เพื่อนผ่าน LINE แบบนุ่มนวลได้ทันที!
+                </div>
+
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
+                    <strong class="text-rose-700 block mb-0.5"><i class="fa-solid fa-calculator mr-1"></i> ตรรกะกระแสเงินที่สมจริง:</strong>
+                    - เมื่อเพื่อนโอนคืน คุณจะได้รับยอดเงินเข้ากระเป๋าที่เลือก ยอดหนี้เพื่อนจะลดลง (หนี้บัตรจะยังไม่ลดลงโดยอัตโนมัติ)<br>
+                    - จากนั้นให้ใช้เมนู **"จ่ายบัตรเครดิต"** เพื่อจ่ายหนี้บัตรจริง ซึ่งจะตัดเงินจากกระเป๋าเงินของคุณไปลดหนี้บัตรจริง
+                </div>
+            </div>
+            <button onclick="toggleInfoModal()" class="w-full bg-gradient-to-b from-slate-800 to-slate-950 hover:from-slate-900 hover:to-black text-white font-bold py-2.5 rounded-xl text-xs transition-colors mt-4">
+                เข้าใจแล้ว, ลุยเลย!
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 9: NOTIFICATIONS (การแจ้งเตือนบิลและค้างชำระ) -->
+    <div id="notificationModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden" onclick="if(event.target===this) closeNotificationModal()">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-bell mr-2 text-rose-500"></i> แจ้งเตือนยอดกำหนดชำระ</h3>
+                <div class="flex items-center gap-2">
+                    <button onclick="clearAllNotifications()" id="clearAllNotificationsBtn" class="text-[11px] font-semibold text-slate-400 hover:text-rose-500 transition-colors hidden">เคลียร์ทั้งหมด</button>
+                    <button onclick="closeNotificationModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+
+            <div id="notificationList" class="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                <!-- Dynamically Loaded Notifications -->
+            </div>
+            
+            <button onclick="closeNotificationModal()" class="w-full bg-gradient-to-b from-slate-800 to-slate-950 hover:from-slate-900 hover:to-black text-white font-bold py-2.5 rounded-xl text-xs transition-colors mt-4">
+                ปิดหน้าต่าง
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 10: DYNAMIC ITEM DETAIL (แสดงรายละเอียดรายการ) -->
+    <div id="itemDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden" onclick="if(event.target===this) closeItemDetailModal()">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900" id="detailModalTitle">รายละเอียดรายการ</h3>
+                <button onclick="closeItemDetailModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div id="detailModalContent" class="space-y-4 text-xs text-slate-600 leading-normal">
+                <!-- Dynamically Inserted -->
+            </div>
+
+            <div id="detailDebtorActionsRow" class="flex gap-2 mt-3 hidden">
+                <button id="detailShareSlipBtn" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5">
+                    <i class="fa-regular fa-paper-plane"></i> แชร์สลิปทวง
+                </button>
+                <button id="detailReceivePaybackBtn" class="flex-1 bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-hand-holding-dollar"></i> รับชำระคืน
+                </button>
+            </div>
+
+            <div class="flex gap-2 mt-3">
+                <button id="detailActionBtn" class="flex-1 bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-2.5 rounded-xl transition-colors hidden">
+                    <!-- Dynamic -->
+                </button>
+                <button id="detailDeleteBtn" class="flex-1 bg-gradient-to-b from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-bold py-2.5 rounded-xl transition-colors hidden">
+                    <i class="fa-solid fa-trash mr-1"></i> ลบรายการนี้
+                </button>
+                <button onclick="closeItemDetailModal()" class="flex-1 bg-gradient-to-b from-slate-800 to-slate-950 hover:from-slate-900 hover:to-black text-white font-bold py-2.5 rounded-xl transition-colors">
+                    ปิดหน้าต่าง
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL 11: ALERT DIALOG (หน้าต่างแจ้งเตือนข้อความ) -->
+    <div id="alertModalDialog" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[1000] p-4 hidden" onclick="if(event.target===this) closeAlertModal()">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200/70 animate-in fade-in zoom-in-95 duration-150 text-center space-y-4">
+            <div class="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <h3 class="text-sm font-bold text-slate-800">แจ้งเตือนระบบ</h3>
+            <p id="alertModalText" class="text-xs text-slate-500 leading-relaxed"></p>
+            <button onclick="closeAlertModal()" class="w-full bg-gradient-to-b from-slate-800 to-slate-950 hover:from-slate-900 hover:to-black text-white font-bold py-2.5 rounded-xl text-xs transition-colors">
+                ตกลง
+            </button>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script src="api.js?v=2.6"></script>
+    <script src="app.js?v=2.6"></script>
+</body>
+</html>

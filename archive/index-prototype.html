@@ -1,0 +1,3073 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Somdul - สมดุลการเงิน บัตรเครดิต และลูกหนี้</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2canvas CDN for PNG download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f8fafc;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        /* Custom scrollbar for horizontal timeline */
+        .scrollbar-thin::-webkit-scrollbar {
+            height: 4px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col pb-12">
+
+    <!-- Top Navigation -->
+    <header class="bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-emerald-200">
+                    <i class="fa-solid fa-scale-balanced text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">Somdul</h1>
+                    <p class="text-xs text-slate-400" id="headerProfileName">ระบบจัดการสมดุลการเงินส่วนตัว</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button onclick="openSettingsModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors" title="ตั้งค่าระบบ">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+                <button onclick="toggleInfoModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors" title="ข้อมูลการใช้งาน">
+                    <i class="fa-solid fa-circle-info"></i>
+                </button>
+                <div class="relative">
+                    <span id="notificationBadge" class="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full hidden"></span>
+                    <button onclick="openNotificationModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-colors" title="การแจ้งเตือน">
+                        <i class="fa-regular fa-bell text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-md mx-auto w-full px-4 pt-4 flex-1 pb-24">
+
+        <!-- VIEW 1: HOME/DASHBOARD -->
+        <div id="view-home" class="space-y-6">
+            <!-- WALLET CARD (SAFE TO SPEND) -->
+            <section class="bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 text-white rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                <div class="absolute -right-8 -bottom-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-xl"></div>
+                <div class="absolute -left-10 -top-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl"></div>
+
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <span class="text-xs text-slate-300 font-light tracking-wide uppercase">ยอดเงินใช้ได้จริงคงเหลือ (Safe-to-Spend)</span>
+                        <h2 class="text-3xl font-bold mt-1 text-emerald-400 tracking-wide" id="displaySafeToSpend">฿0.00</h2>
+                    </div>
+                    <span class="bg-emerald-500/20 text-emerald-300 text-[10px] font-medium px-2.5 py-1 rounded-full border border-emerald-500/30">
+                        <i class="fa-solid fa-shield-halved mr-1"></i> ประเมินแล้วปลอดภัย
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700/60 text-xs">
+                    <div>
+                        <span class="text-slate-400 block mb-0.5">เงินสดรวมทุกกระเป๋า</span>
+                        <span class="font-semibold text-slate-100 text-sm" id="displayTotalCash">฿0.00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block mb-0.5">ค่าใช้จ่ายรายเดือนที่รอตัด</span>
+                        <span class="font-semibold text-rose-300 text-sm" id="displayTotalRecurring">฿0.00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block mb-0.5">ยอดหนี้บัตรเครดิตค้างจ่าย</span>
+                        <span class="font-semibold text-amber-300 text-sm" id="displayTotalCreditCards">฿0.00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block mb-0.5">ลูกหนี้ค้างจ่ายคืนเรา</span>
+                        <span class="font-semibold text-emerald-300 text-sm" id="displayTotalDebts">฿0.00</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- WALLET LIST (DASHBOARD) -->
+            <section class="bg-slate-50/50 rounded-3xl p-1.5 border border-slate-100/50">
+                <div class="flex justify-between items-center px-2 py-1 mb-2">
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-wallet mr-1 text-emerald-500"></i> บัญชีและกระเป๋าเงิน</h3>
+                    <button onclick="openSettingsModal()" class="text-[11px] text-emerald-500 hover:underline"><i class="fa-solid fa-plus mr-0.5"></i>จัดการ</button>
+                </div>
+                <div id="dashboardWalletList" class="grid grid-cols-3 gap-2">
+                    <!-- Dynamically Inserted Wallets -->
+                </div>
+            </section>
+
+            <!-- ACTION QUICK BUTTONS -->
+            <section class="grid grid-cols-3 gap-3">
+                <button onclick="openTransactionModal()" class="bg-white hover:bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col items-center text-center transition-all shadow-sm">
+                    <span class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-1.5">
+                        <i class="fa-solid fa-wallet text-sm"></i>
+                    </span>
+                    <span class="text-xs font-semibold text-slate-700">จดรับ/จ่าย</span>
+                </button>
+                <button onclick="openDebtModal()" class="bg-white hover:bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col items-center text-center transition-all shadow-sm">
+                    <span class="w-10 h-10 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-1.5">
+                        <i class="fa-solid fa-hand-holding-dollar text-sm"></i>
+                    </span>
+                    <span class="text-xs font-semibold text-slate-700">ตั้งลูกหนี้ใหม่</span>
+                </button>
+                <button onclick="openCreditCardPaymentModal()" class="bg-white hover:bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col items-center text-center transition-all shadow-sm">
+                    <span class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-1.5">
+                        <i class="fa-regular fa-credit-card text-sm"></i>
+                    </span>
+                    <span class="text-xs font-semibold text-slate-700">จ่ายบัตรเครดิต</span>
+                </button>
+            </section>
+            <!-- CATEGORY SPENDING SUMMARY -->
+            <section id="categorySummarySection" class="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-50 pb-2">
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                        <i class="fa-solid fa-chart-pie mr-1.5 text-emerald-500"></i> สรุปรายจ่ายตามหมวดหมู่
+                    </h3>
+                    <span class="text-[10px] text-slate-400 font-medium" id="categorySummaryCycle">รอบบัญชีจำลอง</span>
+                </div>
+                <div id="categorySummaryContainer" class="space-y-3">
+                    <!-- Dynamically populated progress bars of categories -->
+                </div>
+            </section>
+
+            <!-- RECENT TRANSACTIONS -->
+            <section>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-receipt mr-1.5 text-slate-500"></i> ประวัติรายการทำธุรกรรมล่าสุด</h3>
+                    <button onclick="clearAllTransactions()" class="text-[11px] text-slate-400 hover:text-slate-600 underline">ล้างประวัติจำลอง</button>
+                </div>
+                <div id="transactionHistory" class="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-50 overflow-hidden shadow-sm">
+                    <!-- Dynamically Inserted -->
+                </div>
+            </section>
+        </div>
+
+        <!-- VIEW 2: DEBTORS -->
+        <div id="view-debtors" class="space-y-4 hidden">
+            <!-- LIQUIDITY TIMELINE TRACKER -->
+            <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b border-slate-50 pb-2">
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wide"><i class="fa-regular fa-calendar-days text-emerald-500 mr-1.5"></i> ไทม์ไลน์สภาพคล่อง 30 วันข้างหน้า</h4>
+                    <span class="text-[10px] text-slate-400 font-medium">เข้า (เขียว) / ออก (แดง)</span>
+                </div>
+                <div id="timelineTrackerContainer" class="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
+                    <!-- Dynamically Inserted horizontal scroll timeline items -->
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center">
+                <div class="flex items-baseline gap-2">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-list-check mr-1.5 text-emerald-500"></i> รายการลูกหนี้</h3>
+                    <span class="text-xs text-slate-400" id="debtorCount">ทั้งหมด 0 คน</span>
+                </div>
+                <button onclick="openDebtModal()" class="bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm">
+                    <i class="fa-solid fa-user-plus"></i> ตั้งลูกหนี้ใหม่
+                </button>
+            </div>
+
+            <!-- Debtor List Grid -->
+            <div id="debtorList" class="space-y-3">
+                <!-- Dynamically Inserted -->
+            </div>
+        </div>
+
+        <!-- VIEW 3: CREDIT CARDS -->
+        <div id="view-cards" class="space-y-4 hidden">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-credit-card mr-1.5 text-blue-500"></i> บัตรเครดิตและยอดรอตัดชำระ</h3>
+                <button onclick="openCreditCardPaymentModal()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm">
+                    <i class="fa-regular fa-credit-card"></i> จ่ายบัตรเครดิต
+                </button>
+            </div>
+
+            <div id="creditCardList" class="space-y-3">
+                <!-- Dynamically Inserted -->
+            </div>
+        </div>
+
+        <!-- VIEW 4: RECURRING -->
+        <div id="view-recurring" class="space-y-4 hidden">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-rotate mr-1.5 text-amber-500"></i> ค่าบริการรายเดือนประจำ (Subscription)</h3>
+                <span class="text-xs text-slate-400" id="recurringCount">ทั้งหมด 0 รายการ</span>
+            </div>
+
+            <div id="recurringList" class="space-y-3">
+                <!-- Dynamically Inserted -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Bottom Navigation Bar (Mobile-like Fixed Tab Bar) -->
+    <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-100 max-w-md mx-auto z-40 shadow-lg rounded-t-2xl pb-safe">
+        <div class="flex justify-around items-center py-2.5 px-2">
+            <button onclick="switchMainTab('home')" id="bottomTab-home" class="flex flex-col items-center gap-1 text-emerald-500 transition-colors">
+                <i class="fa-solid fa-house text-lg"></i>
+                <span class="text-[9px] font-bold">หน้าหลัก</span>
+            </button>
+            <button onclick="switchMainTab('debtors')" id="bottomTab-debtors" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 transition-colors">
+                <i class="fa-solid fa-users-gear text-lg"></i>
+                <span class="text-[9px] font-bold">ลูกหนี้</span>
+            </button>
+            <button onclick="switchMainTab('cards')" id="bottomTab-cards" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 transition-colors">
+                <i class="fa-solid fa-credit-card text-lg"></i>
+                <span class="text-[9px] font-bold">บัตรเครดิต</span>
+            </button>
+            <button onclick="switchMainTab('recurring')" id="bottomTab-recurring" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 transition-colors">
+                <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+                <span class="text-[9px] font-bold">รายเดือน</span>
+            </button>
+            <button onclick="openSettingsModal()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 transition-colors">
+                <i class="fa-solid fa-gear text-lg"></i>
+                <span class="text-[9px] font-bold">ตั้งค่า</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- LOGIN SCREEN OVERLAY -->
+    <div id="loginScreen" class="fixed inset-0 bg-slate-50 z-[999] flex flex-col justify-center items-center p-4 hidden animate-in fade-in duration-200">
+        <div class="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-100 shadow-xl space-y-6 text-center">
+            <div class="flex flex-col items-center gap-2">
+                <div class="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                    <i class="fa-solid fa-scale-balanced text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900 mt-2" id="loginTitle">เข้าสู่ระบบ Somdul</h2>
+                <p class="text-xs text-slate-400">บริหารสมดุลการเงิน บัตรเครดิต และลูกหนี้ครบวงจร</p>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-4 text-left">
+                <div id="regNameField" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ชื่อโปรไฟล์</label>
+                    <input type="text" id="loginNameInput" placeholder="เช่น คุณสมชาย" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">อีเมลผู้ใช้งาน</label>
+                    <input type="email" required id="loginEmailInput" placeholder="demo@somdul.com" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">รหัสผ่าน</label>
+                    <input type="password" required id="loginPasswordInput" placeholder="••••••••" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                </div>
+
+                <div class="space-y-2 pt-2">
+                    <button type="submit" id="loginSubmitBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-emerald-200 text-sm text-center block">
+                        เข้าสู่ระบบ
+                    </button>
+                    <button type="button" onclick="quickDemoLogin()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-colors text-sm text-center block">
+                        ทดลองเข้าใช้งานด่วน (Demo)
+                    </button>
+                </div>
+            </form>
+
+            <div class="text-xs text-slate-400 border-t border-slate-100 pt-4 flex justify-between">
+                <span id="loginToggleText">ยังไม่มีบัญชีใช้งาน?</span>
+                <button onclick="toggleRegisterMode()" id="loginToggleBtn" class="text-emerald-600 font-bold hover:underline">สมัครสมาชิกใหม่</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 1: ADD TRANSACTION (รายรับ / รายจ่าย) -->
+    <div id="transactionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-file-invoice-dollar mr-2 text-emerald-500"></i> จดบันทึก รายรับ/รายจ่าย</h3>
+                <button onclick="closeTransactionModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <form id="transactionForm" onsubmit="handleTransactionSubmit(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                    <button type="button" id="txTypeExpense" onclick="setTxType('EXPENSE')" class="py-2 text-center text-xs font-semibold rounded-lg bg-white text-slate-800 shadow-sm transition-all">รายจ่าย</button>
+                    <button type="button" id="txTypeIncome" onclick="setTxType('INCOME')" class="py-2 text-center text-xs font-semibold rounded-lg text-slate-400 transition-all">รายรับ</button>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">จำนวนเงิน (บาท)</label>
+                    <input type="number" step="0.01" required id="txAmount" placeholder="0.00" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-lg text-slate-800">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">เลือกรายการด่วน (Quick Select)</label>
+                    <select id="txQuickDesc" onchange="applyQuickDesc()" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">รายละเอียด / คำอธิบาย</label>
+                    <input type="text" required id="txDesc" placeholder="เช่น ค่าข้าวกลางวัน, เงินเดือนออก" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">หมวดหมู่</label>
+                    <select id="txCategory" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ผ่านกระเป๋าเงิน / แหล่งเงิน</label>
+                    <select id="txWallet" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-emerald-200 text-sm">
+                    บันทึกข้อมูล
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ADD DEBTOR (ตั้งลูกหนี้ใหม่) -->
+    <div id="debtModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-user-plus mr-2 text-rose-500"></i> ตั้งวงหนี้ / ลูกหนี้ใหม่</h3>
+                <button onclick="closeDebtModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <form id="debtForm" onsubmit="handleDebtSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ชื่อลูกหนี้ / เพื่อนที่ยืม</label>
+                    <input type="text" required id="debtorName" placeholder="ระบุชื่อ เช่น เพื่อนบอย, เอสที่ทำงาน" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ประเภทหนี้และการชำระ</label>
+                    <select id="debtType" onchange="toggleDebtTypeInputs()" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                        <option value="CASH_LOAN">💸 ยืมเงินสดทั่วไป (จ่ายก้อนเดียวคืน)</option>
+                        <option value="INSTALLMENT">🗓️ ผ่อนจ่ายรายเดือน (เป็นยอดงวดๆ เช่น ดอกเบี้ย/แชร์จ่าย)</option>
+                        <option value="CREDIT_CARD_INSTALLMENT">💳 รูดบัตรแทนเพื่อน และตกลงให้เพื่อนผ่อนคืน</option>
+                        <option value="SHARED_SUBSCRIPTION">🔄 แชร์ค่าบริการรายเดือน (เช่น Netflix, YouTube, Spotify)</option>
+                    </select>
+                </div>
+
+                <!-- Conditional Input: If CREDIT_CARD_INSTALLMENT is selected -->
+                <div id="creditCardSelectWrapper" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">รูดผ่านบัตรเครดิตใบไหน</label>
+                    <select id="debtCardId" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <!-- Conditional Input: If SHARED_SUBSCRIPTION is selected -->
+                <div id="subscriptionSelectWrapper" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ผูกกับบริการรายเดือนหลัก (เพื่ออัปเดตหนี้เมื่อผู้ใช้จ่ายบิล)</label>
+                    <select id="debtLinkedSubscriptionId" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label id="debtAmountLabel" class="block text-xs font-semibold text-slate-500 mb-1">จำนวนเงินต้นทั้งหมด</label>
+                        <input type="number" required id="debtAmount" placeholder="0.00" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 font-semibold text-slate-800 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1" id="installmentLabel">จำนวนงวดที่ผ่อนชำระ</label>
+                        <input type="number" required id="debtInstallments" value="1" min="1" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">วันกำหนดชำระคืนของทุกเดือน (วันที่ 1-31)</label>
+                    <input type="number" required id="debtDueDay" min="1" max="31" value="25" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">หมายเหตุ / ผ่อนอะไร</label>
+                    <input type="text" id="debtMemo" placeholder="เช่น ค่าตั๋วคอนเสิร์ต, หุ้นค่า iPad Pro" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 text-sm">
+                </div>
+
+                <button type="submit" class="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-rose-200 text-sm">
+                    ลงบันทึกยอดหนี้
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: CREDIT CARD PAYMENT (เคลียร์บิลชำระบัตรเครดิต) -->
+    <div id="creditCardPaymentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-credit-card mr-2 text-blue-500"></i> ชำระหนี้รอบบิลบัตรเครดิต</h3>
+                <button onclick="closeCreditCardPaymentModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <form id="ccPaymentForm" onsubmit="handleCCPaymentSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">เลือกบัตรเครดิตที่ต้องการเคลียร์ยอด</label>
+                    <select id="ccPaymentCardId" onchange="updateCCPaymentMax()" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-semibold text-slate-500">จำนวนเงินที่ชำระคืน (บาท)</label>
+                        <span class="text-xs text-blue-600 font-semibold cursor-pointer" onclick="fillCCMaxAmount()">จ่ายเต็มยอดค้าง</span>
+                    </div>
+                    <input type="number" step="0.01" required id="ccPaymentAmount" placeholder="0.00" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">จ่ายจากบัญชี / แหล่งเงินต้นทาง</label>
+                    <select id="ccPaymentWallet" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-blue-200 text-sm">
+                    ยืนยันการจ่ายเงินบัตรเครดิต
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: DEBTOR SHAREABLE SLIP (ส่งการ์ดทวงหนี้) -->
+    <div id="shareSlipModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 relative">
+            <button onclick="closeShareSlipModal()" class="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-500 shadow-md"><i class="fa-solid fa-xmark"></i></button>
+            
+            <div class="text-center mb-4">
+                <span class="bg-indigo-50 text-indigo-600 text-xs font-semibold px-3 py-1 rounded-full"><i class="fa-regular fa-paper-plane mr-1"></i> แชร์สรุปยอดพาร์ตเนอร์</span>
+                <p class="text-[11px] text-slate-400 mt-1">คัดลอกคำทวงหรือดาวน์โหลดรูปภาพเพื่อส่งใน Line ได้อย่างน่ารักและเป็นสุภาพชน</p>
+            </div>
+
+            <!-- THE SLIP TO BE TAKEN / SHARED -->
+            <div id="slipArea" class="bg-slate-50 rounded-2xl p-5 border border-dashed border-slate-300 relative text-left">
+                <!-- Watermark Background Logo -->
+                <div class="absolute right-4 top-4 text-emerald-500/10 text-6xl pointer-events-none">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                </div>
+
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-200/60 pb-3">
+                    <div class="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white text-xs">
+                        <i class="fa-solid fa-scale-balanced"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-800">Somdul Card</h4>
+                        <span class="text-[9px] text-slate-400">บันทึกช่วยเตือนความจำ</span>
+                    </div>
+                </div>
+
+                <div class="space-y-3 text-xs text-slate-700">
+                    <div>
+                        <span class="text-[10px] text-slate-400 block">ถึงคุณพาร์ทเนอร์คนสำคัญ:</span>
+                        <span class="font-bold text-slate-800 text-sm" id="slipDebtorName">เพื่อนบอย</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <span class="text-[10px] text-slate-400 block">ประเภทรายการ:</span>
+                            <span class="font-semibold text-slate-700" id="slipDebtType">ผ่อนสินค้าผ่านบัตร</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block">รายการอ้างอิง:</span>
+                            <span class="font-semibold text-slate-700" id="slipDebtMemo">ค่า iPad Air</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl p-3 border border-slate-100 text-center my-2">
+                        <span class="text-[9px] text-slate-400 block uppercase font-semibold">ยอดโอนที่สะดวกคืนรอบนี้</span>
+                        <span class="text-2xl font-bold text-emerald-600" id="slipAmountToPay">฿1,500.00</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5" id="slipInstallmentProgress">งวดที่ 2 / 10 งวด</span>
+                    </div>
+
+                    <div class="text-[10px] text-slate-400 text-center italic border-t border-slate-200/60 pt-2.5">
+                        "ขอบคุณนะที่ช่วยแบ่งเบายอดกัน รักษาความสมดุลทางการเงินของพวกเรา ❤️"
+                    </div>
+                </div>
+            </div>
+
+            <!-- ACTION BUTTONS IN MODAL -->
+            <div class="grid grid-cols-2 gap-3 mt-4">
+                <button onclick="copySlipText()" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors">
+                    <i class="fa-regular fa-copy"></i> คัดลอกข้อความ
+                </button>
+                <button onclick="downloadSlipImage()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors">
+                    <i class="fa-regular fa-image"></i> ดาวน์โหลดการ์ด (PNG)
+                </button>
+            </div>
+            
+            <p id="shareStatusMsg" class="text-center text-[10px] text-emerald-600 font-medium mt-2 opacity-0 transition-opacity duration-300">คัดลอกข้อความทวงอย่างเป็นทางการไปยังคลิปบอร์ดแล้ว!</p>
+        </div>
+    </div>
+
+    <!-- MODAL 5: RECEIVE PAYBACK (บันทึกรับเงินคืนแบบละเอียด) -->
+    <div id="receivePaybackModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-hand-holding-dollar mr-2 text-emerald-500"></i> บันทึกรับชำระเงินคืน</h3>
+                <button onclick="closeReceivePaybackModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <form id="receivePaybackForm" onsubmit="handleReceivePaybackSubmit(event)" class="space-y-4">
+                <input type="hidden" id="paybackDebtorId">
+                <div>
+                    <span class="text-xs text-slate-400 block">จากลูกหนี้:</span>
+                    <span class="font-bold text-slate-800 text-sm" id="paybackDebtorName">-</span>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div>
+                        <span class="text-slate-400 block">ยอดหนี้ค้างรวม:</span>
+                        <span class="font-bold text-slate-700" id="paybackTotalOwed">฿0.00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block">จำนวนงวดคงเหลือ:</span>
+                        <span class="font-bold text-slate-700" id="paybackInstallmentsLeft">0 งวด</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">จำนวนเงินที่ได้รับคืนจริง (บาท)</label>
+                    <input type="number" step="0.01" required id="paybackAmount" placeholder="0.00" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-slate-800 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">โอนเข้าบัญชี / กระเป๋าเงินสด</label>
+                    <select id="paybackWallet" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-emerald-200 text-sm">
+                    ยืนยันการรับชำระเงิน
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 6: PAY RECURRING (ยืนยันจ่ายค่าบริการรายเดือน) -->
+    <div id="payRecurringModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-clock-rotate-left mr-2 text-amber-500"></i> ชำระค่าบริการรายเดือน</h3>
+                <button onclick="closePayRecurringModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <form id="payRecurringForm" onsubmit="handlePayRecurringSubmit(event)" class="space-y-4">
+                <input type="hidden" id="payRecurringId">
+                <div class="space-y-1">
+                    <span class="text-xs text-slate-400 block">รายการค่าใช้จ่าย:</span>
+                    <span class="font-bold text-slate-800 text-sm" id="payRecurringName">-</span>
+                    <span class="font-bold text-rose-500 text-lg block" id="payRecurringAmount">฿0.00</span>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">จ่ายผ่านกระเป๋า / บัญชี</label>
+                    <select id="payRecurringWallet" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 text-sm">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-amber-200 text-sm">
+                    ยืนยันการจ่ายเงิน
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 7: SETTINGS & CRUD -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200 max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 shrink-0">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-gear mr-2 text-slate-600"></i> ตั้งค่าและการจัดการข้อมูล</h3>
+                <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <!-- Settings Tabs -->
+            <div class="flex border-b border-slate-200 mb-4 bg-slate-50 rounded-xl p-1 shrink-0 text-xs">
+                <button onclick="switchSettingsTab('wallets')" id="setTabBtn-wallets" class="flex-1 py-1.5 text-center font-semibold rounded-lg bg-white text-slate-800 shadow-xs">กระเป๋าเงิน</button>
+                <button onclick="switchSettingsTab('cards')" id="setTabBtn-cards" class="flex-1 py-1.5 text-center font-semibold rounded-lg text-slate-500 hover:text-slate-800">บัตรเครดิต</button>
+                <button onclick="switchSettingsTab('system')" id="setTabBtn-system" class="flex-1 py-1.5 text-center font-semibold rounded-lg text-slate-500 hover:text-slate-800">ระบบ</button>
+            </div>
+
+            <!-- Settings Tab Content (Scrollable) -->
+            <div class="flex-1 overflow-y-auto pr-1 space-y-4 text-xs">
+                <!-- WALLET SETTINGS -->
+                <div id="setTab-wallets" class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-slate-700">รายชื่อบัญชี/กระเป๋าเงิน</span>
+                        <button onclick="showAddWalletForm()" class="bg-emerald-500 text-white px-2.5 py-1 rounded-lg hover:bg-emerald-600 transition-colors"><i class="fa-solid fa-plus mr-1"></i>เพิ่มกระเป๋า</button>
+                    </div>
+                    
+                    <!-- Add/Edit Wallet Form -->
+                    <div id="walletFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                        <h4 id="walletFormTitle" class="font-bold text-slate-800">เพิ่มกระเป๋าเงินใหม่</h4>
+                        <input type="hidden" id="editWalletId">
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">ชื่อกระเป๋าเงิน / บัญชี</label>
+                                <input type="text" id="setWalletName" placeholder="เช่น บัญชีเงินฝาก SCB" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">ประเภทกระเป๋า</label>
+                                    <select id="setWalletType" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                        <option value="CASH">CASH (เงินสด)</option>
+                                        <option value="BANK">BANK (ธนาคาร)</option>
+                                        <option value="E_WALLET">E_WALLET (เงินอิเล็กทรอนิกส์)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">ยอดเงินคงเหลือ</label>
+                                    <input type="number" step="0.01" id="setWalletBalance" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 justify-end">
+                            <button onclick="hideWalletForm()" class="bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg">ยกเลิก</button>
+                            <button onclick="saveWalletSubmit()" class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg">บันทึก</button>
+                        </div>
+                    </div>
+
+                    <div id="settingsWalletList" class="divide-y divide-slate-100 border border-slate-100 rounded-xl bg-white overflow-hidden">
+                        <!-- Dynamically Loaded -->
+                    </div>
+                </div>
+
+                <!-- CREDIT CARD SETTINGS -->
+                <div id="setTab-cards" class="space-y-3 hidden">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-slate-700">รายชื่อบัตรเครดิต</span>
+                        <button onclick="showAddCardForm()" class="bg-blue-500 text-white px-2.5 py-1 rounded-lg hover:bg-blue-600 transition-colors"><i class="fa-solid fa-plus mr-1"></i>เพิ่มบัตร</button>
+                    </div>
+                    
+                    <!-- Add/Edit Card Form -->
+                    <div id="cardFormWrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                        <h4 id="cardFormTitle" class="font-bold text-slate-800">เพิ่มบัตรเครดิตใหม่</h4>
+                        <input type="hidden" id="editCardId">
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">ชื่อบัตรเครดิต</label>
+                                <input type="text" id="setCardName" placeholder="เช่น KTC Platinum" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">วงเงินบัตร</label>
+                                    <input type="number" step="0.01" id="setCardLimit" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">ยอดหนี้รอชำระปัจจุบัน</label>
+                                    <input type="number" step="0.01" id="setCardBalance" value="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">วันตัดรอบบิล (1-31)</label>
+                                    <input type="number" min="1" max="31" id="setCardBillingDay" placeholder="10" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">วันกำหนดชำระจริง (1-31)</label>
+                                    <input type="number" min="1" max="31" id="setCardDueDay" placeholder="25" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 justify-end">
+                            <button onclick="hideCardForm()" class="bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg">ยกเลิก</button>
+                            <button onclick="saveCardSubmit()" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg">บันทึก</button>
+                        </div>
+                    </div>
+
+                    <div id="settingsCardList" class="divide-y divide-slate-100 border border-slate-100 rounded-xl bg-white overflow-hidden">
+                        <!-- Dynamically Loaded -->
+                    </div>
+                </div>
+
+                <!-- SYSTEM SETTINGS -->
+                <div id="setTab-system" class="space-y-4 hidden py-2">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <h4 class="font-bold text-slate-800"><i class="fa-solid fa-database mr-1"></i> จัดการฐานข้อมูลระบบจำลอง</h4>
+                        <p class="text-[11px] text-slate-500 leading-normal">แอปพลิเคชันจัดเก็บข้อมูลทั้งหมดไว้ใน LocalStorage ของเบราว์เซอร์นี้เท่านั้น ข้อมูลจะอยู่ถาวรยกเว้นจะเคลียร์แคชเบราว์เซอร์หรือทำการรีเซ็ตด้านล่าง</p>
+                        
+                        <div class="space-y-2 pt-2">
+                            <button onclick="resetToDemoData()" class="w-full bg-slate-900 text-white hover:bg-slate-800 py-2.5 rounded-xl font-bold transition-colors flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-arrows-spin"></i> โหลดข้อมูลสาธิตใหม่ (Demo Reset)
+                            </button>
+                            <button onclick="clearAllData()" class="w-full bg-rose-500 text-white hover:bg-rose-600 py-2.5 rounded-xl font-bold transition-colors flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-trash-can"></i> ล้างข้อมูลทั้งหมดในเครื่อง (Delete All)
+                            </button>
+                            <button onclick="handleLogout()" class="w-full bg-slate-200 text-slate-700 hover:bg-slate-300 py-2.5 rounded-xl font-bold transition-colors flex items-center justify-center gap-1.5 mt-2">
+                                <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ (Log Out)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 8: APP INFO & ABOUT -->
+    <div id="infoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 relative">
+            <button onclick="toggleInfoModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            
+            <h3 class="text-lg font-bold text-slate-900 mb-3"><i class="fa-solid fa-circle-question text-emerald-500 mr-1.5"></i> วิธีใช้งานแอป "Somdul" ฉบับสมบูรณ์</h3>
+            <div class="space-y-3 text-xs text-slate-600 leading-relaxed overflow-y-auto max-h-[60vh] pr-1">
+                <p>ยินดีต้อนรับสู่ระบบบริหารสมดุลการเงิน **"สมดุล"** ครับ ระบบรองรับการจำลองสมการกระแสเงินสดและทวงถามยอดผ่อนชำระแบบสมจริงดังนี้:</p>
+                
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <strong class="text-emerald-700 block mb-0.5"><i class="fa-solid fa-bolt mr-1"></i> สูตรคำนวณ Safe-to-Spend:</strong>
+                    ตัวเลขใหญ่สุดที่แสดงบนบัตรคิดจาก: 
+                    <div class="font-mono bg-slate-100 p-1.5 rounded mt-1 text-[11px] text-slate-700">
+                        เงินสดในกระเป๋า + ลูกหนี้ค้างคืน - ยอดหนี้บัตรเครดิต - ค่าบริการรายเดือนซ้ำๆ
+                    </div>
+                </div>
+
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <strong class="text-emerald-700 block mb-0.5"><i class="fa-regular fa-calendar-days mr-1"></i> ไทม์ไลน์สภาพคล่อง 30 วันข้างหน้า:</strong>
+                    ระบบจะคำนวณวันกำหนดชำระเงินของยอดรับคืนหนี้ (สีเขียว), บิลบัตรเครดิตที่ต้องไปจ่าย (สีแดง) และค่าบริการรายเดือน (สีส้ม/แดง) ใน 30 วันข้างหน้าแบบเรียลไทม์ เพื่อช่วยให้คุณบริหารสภาพคล่องล่วงหน้าไม่ให้ติดลบ!
+                </div>
+
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <strong class="text-indigo-700 block mb-0.5"><i class="fa-regular fa-paper-plane mr-1"></i> ดาวน์โหลดการ์ดภาพทวงหนี้แบบสุภาพ:</strong>
+                    ที่รายการลูกหนี้ ลองกดปุ่ม <span class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-[10px] font-semibold">แชร์สลิปทวง</span> คุณสามารถกดดาวน์โหลดไฟล์ภาพ PNG คมชัดเพื่อส่งให้เพื่อนผ่าน LINE แบบนุ่มนวลได้ทันที!
+                </div>
+
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <strong class="text-rose-700 block mb-0.5"><i class="fa-solid fa-calculator mr-1"></i> ตรรกะกระแสเงินที่สมจริง:</strong>
+                    - เมื่อเพื่อนโอนคืน คุณจะได้รับยอดเงินเข้ากระเป๋าที่เลือก ยอดหนี้เพื่อนจะลดลง (หนี้บัตรจะยังไม่ลดลงโดยอัตโนมัติ)<br>
+                    - จากนั้นให้ใช้เมนู **"จ่ายบัตรเครดิต"** เพื่อจ่ายหนี้บัตรจริง ซึ่งจะตัดเงินจากกระเป๋าเงินของคุณไปลดหนี้บัตรจริง
+                </div>
+            </div>
+            <button onclick="toggleInfoModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs transition-colors mt-4">
+                เข้าใจแล้ว, ลุยเลย!
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 9: NOTIFICATIONS (การแจ้งเตือนบิลและค้างชำระ) -->
+    <div id="notificationModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid fa-bell mr-2 text-rose-500"></i> แจ้งเตือนยอดกำหนดชำระ</h3>
+                <button onclick="closeNotificationModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div id="notificationList" class="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                <!-- Dynamically Loaded Notifications -->
+            </div>
+            
+            <button onclick="closeNotificationModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs transition-colors mt-4">
+                ปิดหน้าต่าง
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 10: DYNAMIC ITEM DETAIL (แสดงรายละเอียดรายการ) -->
+    <div id="itemDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900" id="detailModalTitle">รายละเอียดรายการ</h3>
+                <button onclick="closeItemDetailModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div id="detailModalContent" class="space-y-4 text-xs text-slate-600 leading-normal">
+                <!-- Dynamically Inserted -->
+            </div>
+            
+            <div class="flex gap-2 mt-6">
+                <button id="detailActionBtn" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition-colors hidden">
+                    <!-- Dynamic -->
+                </button>
+                <button id="detailDeleteBtn" class="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-2.5 rounded-xl transition-colors hidden">
+                    <i class="fa-solid fa-trash mr-1"></i> ลบรายการนี้
+                </button>
+                <button onclick="closeItemDetailModal()" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl transition-colors">
+                    ปิดหน้าต่าง
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Global Simulation State
+        const state = {
+            wallets: [],
+            creditCards: [],
+            recurringPayments: [],
+            debtors: [],
+            transactions: [],
+            currentUser: null, // Logged in user profile
+            activeTab: "home",
+            currentTxType: "EXPENSE"
+        };
+
+        // Default mock data seed
+        const defaultState = {
+            wallets: [
+                { id: "w-cash", name: "เงินสดพกพา", type: "CASH", balance: 5000.00 },
+                { id: "w-scb", name: "บัญชีเงินฝาก SCB", type: "BANK", balance: 24500.00 },
+                { id: "w-truemoney", name: "TrueMoney Wallet", type: "E_WALLET", balance: 1500.00 }
+            ],
+            creditCards: [
+                { id: "c-kbank", name: "KBank OneSiam", limit: 100000.00, balance: 6200.00, billingDay: 10, dueDay: 25 },
+                { id: "c-ktc", name: "KTC Visa Platinum", limit: 80000.00, balance: 4500.00, billingDay: 18, dueDay: 2 }
+            ],
+            recurringPayments: [
+                { id: "rec-1", name: "Netflix Premium Family", amount: 419.00, dueDay: 28, status: "WAITING" },
+                { id: "rec-2", name: "ค่าส่วนกลาง คอนโด", amount: 1200.00, dueDay: 5, status: "WAITING" },
+                { id: "rec-3", name: "Spotify Premium", amount: 139.00, dueDay: 15, status: "PAID" }
+            ],
+            debtors: [
+                {
+                    id: "debt-1",
+                    name: "เพื่อนบอย (ที่ทำงาน)",
+                    type: "CREDIT_CARD_INSTALLMENT",
+                    cardId: "c-kbank",
+                    totalAmount: 15000.00,
+                    remainingAmount: 6000.00,
+                    totalInstallments: 10,
+                    remainingInstallments: 4,
+                    dueDay: 25,
+                    memo: "ผ่อนช่วยแชร์ iPad Air ให้เพื่อนบอย",
+                    status: "UNPAID"
+                },
+                {
+                    id: "debt-2",
+                    name: "น้องบิว (ฝั่งการเงิน)",
+                    type: "CASH_LOAN",
+                    cardId: null,
+                    totalAmount: 3500.00,
+                    remainingAmount: 3500.00,
+                    totalInstallments: 1,
+                    remainingInstallments: 1,
+                    dueDay: 20,
+                    memo: "ค่ายืมจ่ายร้านส้มตำและหมูกระทะยามเย็น",
+                    status: "UNPAID"
+                },
+                {
+                    id: "debt-3",
+                    name: "เอส เพื่อนมหาลัย",
+                    type: "INSTALLMENT",
+                    cardId: null,
+                    totalAmount: 8000.00,
+                    remainingAmount: 4000.00,
+                    totalInstallments: 4,
+                    remainingInstallments: 2,
+                    dueDay: 10,
+                    memo: "ยืมเงินสมทบทุนฉุกเฉินช่วยผ่อนคอม",
+                    status: "UNPAID"
+                }
+            ],
+            transactions: [
+                { id: "tx-1", type: "EXPENSE", desc: "ซื้อกาแฟโบราณ", category: "FOOD", amount: 65.00, walletId: "w-cash", date: "วันนี้ 08:30" },
+                { id: "tx-2", type: "INCOME", desc: "เพื่อนบอยโอนเงินคืนงวด 6/10", category: "REFUND", amount: 1500.00, walletId: "w-scb", date: "เมื่อวาน 19:15" },
+                { id: "tx-3", type: "EXPENSE", desc: "รูดจ่ายค่าอาหารค่ำเพื่อนเลี้ยงบัตร", category: "FOOD", amount: 1200.00, walletId: "c-kbank", date: "15 ก.ค. 2026" }
+            ],
+            currentUser: null,
+            activeTab: "home",
+            currentTxType: "EXPENSE",
+            dismissedNotifications: []
+        };
+
+        const LOCAL_STORAGE_KEY = 'somdul_state_v1';
+        const USERS_DB_KEY = 'somdul_users_db';
+
+        // LocalStorage User Accounts DB
+        function getUsersDB() {
+            const data = localStorage.getItem(USERS_DB_KEY);
+            if (data) {
+                try {
+                    return JSON.parse(data);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            const defaultUsers = [{ name: "คุณสมดุล", email: "demo@somdul.com", password: "password123" }];
+            localStorage.setItem(USERS_DB_KEY, JSON.stringify(defaultUsers));
+            return defaultUsers;
+        }
+
+        function saveUsersDB(db) {
+            localStorage.setItem(USERS_DB_KEY, JSON.stringify(db));
+        }
+
+        // LocalStorage Sync
+        function loadState() {
+            const dataStr = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (dataStr) {
+                try {
+                    const parsed = JSON.parse(dataStr);
+                    Object.assign(state, parsed);
+                    if (!state.dismissedNotifications) state.dismissedNotifications = [];
+                } catch (e) {
+                    console.error("Error loading state, restoring defaults", e);
+                    Object.assign(state, JSON.parse(JSON.stringify(defaultState)));
+                }
+            } else {
+                Object.assign(state, JSON.parse(JSON.stringify(defaultState)));
+                state.currentUser = null; // Default logged out on clean slate
+                saveState();
+            }
+
+            checkLoginSession();
+        }
+
+        function saveState() {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function resetToDemoData() {
+            if (confirm("ต้องการรีเซ็ตข้อมูลทั้งหมดกลับเป็นข้อมูลตัวอย่างจำลองหรือไม่?")) {
+                localStorage.removeItem(LOCAL_STORAGE_KEY);
+                loadState();
+                closeSettingsModal();
+                switchMainTab('home');
+                alertModal("รีเซ็ตฐานข้อมูลตัวอย่างสำเร็จ!");
+            }
+        }
+
+        function clearAllData() {
+            if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลการเงินและหนี้สินทั้งหมด? การกระทำนี้ไม่สามารถย้อนกลับได้")) {
+                state.wallets = [{ id: "w-cash", name: "เงินสดพกพา", type: "CASH", balance: 0.00 }];
+                state.creditCards = [];
+                state.recurringPayments = [];
+                state.debtors = [];
+                state.transactions = [];
+                state.dismissedNotifications = [];
+                saveState();
+                closeSettingsModal();
+                switchMainTab('home');
+                alertModal("ล้างข้อมูลสำเร็จ เริ่มต้นกระเป๋าใหม่!");
+            }
+        }
+
+        // Login System Controls
+        function checkLoginSession() {
+            const loginScreen = document.getElementById('loginScreen');
+            if (!state.currentUser) {
+                loginScreen.classList.remove('hidden');
+            } else {
+                loginScreen.classList.add('hidden');
+                document.getElementById('headerProfileName').innerText = `สวัสดี, ${state.currentUser.name}`;
+                updateNotificationBadge();
+            }
+        }
+
+        let registerMode = false;
+        function toggleRegisterMode() {
+            registerMode = !registerMode;
+            const title = document.getElementById('loginTitle');
+            const nameField = document.getElementById('regNameField');
+            const submitBtn = document.getElementById('loginSubmitBtn');
+            const toggleText = document.getElementById('loginToggleText');
+            const toggleBtn = document.getElementById('loginToggleBtn');
+            const loginNameInput = document.getElementById('loginNameInput');
+            
+            if (registerMode) {
+                title.innerText = "สมัครสมาชิก Somdul";
+                nameField.classList.remove('hidden');
+                loginNameInput.required = true;
+                submitBtn.innerText = "ลงทะเบียนและเข้าใช้งาน";
+                toggleText.innerText = "มีบัญชีอยู่แล้ว?";
+                toggleBtn.innerText = "เข้าสู่ระบบ";
+            } else {
+                title.innerText = "เข้าสู่ระบบ Somdul";
+                nameField.classList.add('hidden');
+                loginNameInput.required = false;
+                submitBtn.innerText = "เข้าสู่ระบบ";
+                toggleText.innerText = "ยังไม่มีบัญชีใช้งาน?";
+                toggleBtn.innerText = "สมัครสมาชิกใหม่";
+            }
+        }
+
+        function handleLoginSubmit(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmailInput').value.trim().toLowerCase();
+            const password = document.getElementById('loginPasswordInput').value;
+            const name = document.getElementById('loginNameInput').value.trim();
+            
+            const db = getUsersDB();
+            
+            if (registerMode) {
+                if (db.some(u => u.email === email)) {
+                    alertModal("อีเมลนี้ถูกใช้งานไปแล้ว!");
+                    return;
+                }
+                
+                const newUser = { name, email, password };
+                db.push(newUser);
+                saveUsersDB(db);
+                
+                state.currentUser = { name: newUser.name, email: newUser.email };
+                saveState();
+                alertModal(`ลงทะเบียนสำเร็จ! ยินดีต้อนรับคุณ ${newUser.name}`);
+            } else {
+                const user = db.find(u => u.email === email && u.password === password);
+                if (!user) {
+                    alertModal("อีเมลหรือรหัสผ่านไม่ถูกต้อง!");
+                    return;
+                }
+                
+                state.currentUser = { name: user.name, email: user.email };
+                saveState();
+                alertModal(`เข้าสู่ระบบสำเร็จ! ยินดีต้อนรับกลับมาคุณ ${user.name}`);
+            }
+            
+            document.getElementById('loginForm').reset();
+            registerMode = false;
+            toggleRegisterMode();
+            
+            checkLoginSession();
+            refreshAppUI();
+        }
+
+        function quickDemoLogin() {
+            state.currentUser = { name: "คุณสมดุล (ผู้ทดลอง)", email: "demo@somdul.com" };
+            saveState();
+            alertModal("เข้าใช้งานจำลองแบบรวดเร็วสำเร็จ!");
+            
+            registerMode = false;
+            document.getElementById('loginForm').reset();
+            
+            checkLoginSession();
+            refreshAppUI();
+        }
+
+        function handleLogout() {
+            if (confirm("คุณต้องการออกจากระบบหรือไม่?")) {
+                state.currentUser = null;
+                saveState();
+                closeSettingsModal();
+                checkLoginSession();
+                alertModal("ออกจากระบบเรียบร้อยแล้ว");
+            }
+        }
+
+        function updateNotificationBadge() {
+            let count = 0;
+            state.debtors.forEach(d => { if (d.status !== "PAID" && d.remainingAmount > 0 && !state.dismissedNotifications.includes(d.id)) count++; });
+            state.creditCards.forEach(c => { if (c.balance > 0 && !state.dismissedNotifications.includes(c.id)) count++; });
+            state.recurringPayments.forEach(r => { if (r.status === "WAITING" && !state.dismissedNotifications.includes(r.id)) count++; });
+            
+            const badge = document.getElementById('notificationBadge');
+            if (badge) {
+                if (count > 0) {
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        }
+
+        function openNotificationModal() {
+            renderNotifications();
+            document.getElementById('notificationModal').classList.remove('hidden');
+            const badge = document.getElementById('notificationBadge');
+            if (badge) badge.classList.add('hidden');
+        }
+
+        function closeNotificationModal() {
+            document.getElementById('notificationModal').classList.add('hidden');
+        }
+
+        function renderNotifications() {
+            const listContainer = document.getElementById('notificationList');
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+            
+            let count = 0;
+            
+            // 1. Debtors
+            state.debtors.forEach(d => {
+                if (d.status !== "PAID" && d.remainingAmount > 0 && !state.dismissedNotifications.includes(d.id)) {
+                    const nextPaybackVal = getNextPaybackVal(d);
+                    const html = `
+                        <div class="flex items-start justify-between gap-3 p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 text-xs animate-in fade-in duration-200">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-arrow-down-long"></i>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-slate-800">ลูกหนี้ค้างชำระคืนเรา</span>
+                                    <p class="text-slate-500 text-[11px] mt-0.5">${d.name} ต้องโอนคืนยอดงวดถัดไป ฿${nextPaybackVal.toLocaleString('th-TH')} (ดีลวันที่ ${d.dueDay})</p>
+                                </div>
+                            </div>
+                            <button onclick="dismissNotification('${d.id}')" class="w-6 h-6 rounded-full bg-white hover:bg-slate-100 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="อ่านแล้ว/ลบออก">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </button>
+                        </div>
+                    `;
+                    listContainer.insertAdjacentHTML('beforeend', html);
+                    count++;
+                }
+            });
+            
+            // 2. Credit Cards
+            state.creditCards.forEach(c => {
+                if (c.balance > 0 && !state.dismissedNotifications.includes(c.id)) {
+                    const html = `
+                        <div class="flex items-start justify-between gap-3 p-3 bg-rose-50/50 rounded-xl border border-rose-100 text-xs animate-in fade-in duration-200">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-credit-card"></i>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-slate-800">บิลบัตรเครดิตรอจ่าย</span>
+                                    <p class="text-slate-500 text-[11px] mt-0.5">บัตร ${c.name} มียอดค้างรอเคลียร์ ฿${c.balance.toLocaleString('th-TH')} (กำหนดชำระวันที่ ${c.dueDay})</p>
+                                </div>
+                            </div>
+                            <button onclick="dismissNotification('${c.id}')" class="w-6 h-6 rounded-full bg-white hover:bg-slate-100 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="อ่านแล้ว/ลบออก">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </button>
+                        </div>
+                    `;
+                    listContainer.insertAdjacentHTML('beforeend', html);
+                    count++;
+                }
+            });
+            
+            // 3. Recurring Payments
+            state.recurringPayments.forEach(r => {
+                if (r.status === "WAITING" && !state.dismissedNotifications.includes(r.id)) {
+                    const html = `
+                        <div class="flex items-start justify-between gap-3 p-3 bg-amber-50/50 rounded-xl border border-amber-100 text-xs animate-in fade-in duration-200">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-rotate-right"></i>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-slate-800">ค่าบริการรายเดือน (Subscription)</span>
+                                    <p class="text-slate-500 text-[11px] mt-0.5">รายการ ${r.name} ยอด ฿${r.amount.toLocaleString('th-TH')} (ดีลกำหนดจ่ายวันที่ ${r.dueDay})</p>
+                                </div>
+                            </div>
+                            <button onclick="dismissNotification('${r.id}')" class="w-6 h-6 rounded-full bg-white hover:bg-slate-100 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="อ่านแล้ว/ลบออก">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </button>
+                        </div>
+                    `;
+                    listContainer.insertAdjacentHTML('beforeend', html);
+                    count++;
+                }
+            });
+            
+            // 4. Welcome Message
+            if (!state.dismissedNotifications.includes('welcome-msg')) {
+                const name = state.currentUser ? state.currentUser.name : 'ผู้ใช้งาน';
+                const welcomeHtml = `
+                    <div class="flex items-start justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs animate-in fade-in duration-200">
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-face-smile"></i>
+                            </div>
+                            <div>
+                                <span class="font-bold text-slate-800">สวัสดีคุณ ${name}!</span>
+                                <p class="text-slate-500 text-[11px] mt-0.5">ระบบสมดุลการเงินพร้อมใช้งานแล้ว จัดการหนี้สินและสภาพคล่องรายเดือนได้อย่างราบรื่น</p>
+                            </div>
+                        </div>
+                        <button onclick="dismissNotification('welcome-msg')" class="w-6 h-6 rounded-full bg-white hover:bg-slate-100 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="อ่านแล้ว/ลบออก">
+                            <i class="fa-solid fa-xmark text-[10px]"></i>
+                        </button>
+                    </div>
+                `;
+                listContainer.insertAdjacentHTML('beforeend', welcomeHtml);
+                count++;
+            }
+
+            if (count === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        ไม่มีการแจ้งเตือนใหม่ในขณะนี้
+                    </div>
+                `;
+            }
+        }
+
+        function getNextPaybackVal(debtor) {
+            if (debtor.type === 'SHARED_SUBSCRIPTION') {
+                return debtor.remainingAmount > 0 ? debtor.remainingAmount : debtor.totalAmount;
+            }
+            if (debtor.remainingInstallments <= 0) return 0;
+            return Math.round(debtor.remainingAmount / debtor.remainingInstallments);
+        }
+
+        // CATEGORY & QUICK TEMPLATES CONSTANTS
+        const CATEGORIES = {
+            FOOD: { name: 'อาหารและเครื่องดื่ม', icon: 'fa-utensils', color: 'bg-amber-500', textColor: 'text-amber-600' },
+            TRANSPORT: { name: 'เดินทาง/คมนาคม', icon: 'fa-car', color: 'bg-blue-500', textColor: 'text-blue-600' },
+            SHOPPING: { name: 'ช้อปปิ้ง', icon: 'fa-bag-shopping', color: 'bg-purple-500', textColor: 'text-purple-600' },
+            STREAMING: { name: 'บันเทิง/สตรีมมิ่ง', icon: 'fa-play', color: 'bg-red-500', textColor: 'text-red-600' },
+            HOUSING: { name: 'ที่พัก/สาธารณูปโภค', icon: 'fa-house-chimney', color: 'bg-indigo-500', textColor: 'text-indigo-600' },
+            HEALTH: { name: 'สุขภาพ/ความงาม', icon: 'fa-heart-pulse', color: 'bg-rose-500', textColor: 'text-rose-600' },
+            DEBT: { name: 'ให้ยืม/หนี้สิน', icon: 'fa-hand-holding-dollar', color: 'bg-teal-500', textColor: 'text-teal-600' },
+            OTHER_EXP: { name: 'อื่นๆ (รายจ่าย)', icon: 'fa-ellipsis', color: 'bg-slate-500', textColor: 'text-slate-600' },
+
+            SALARY: { name: 'เงินเดือน/ค่าจ้าง', icon: 'fa-money-bill-wave', color: 'bg-emerald-500', textColor: 'text-emerald-600' },
+            REFUND: { name: 'โอนคืนจากลูกหนี้', icon: 'fa-rotate-left', color: 'bg-cyan-500', textColor: 'text-cyan-600' },
+            BUSINESS: { name: 'ขายของ/รายเสริม', icon: 'fa-store', color: 'bg-orange-500', textColor: 'text-orange-600' },
+            OTHER_INC: { name: 'อื่นๆ (รายรับ)', icon: 'fa-coins', color: 'bg-yellow-500', textColor: 'text-yellow-600' }
+        };
+
+        const QUICK_TEMPLATES = [
+            { text: '✍️ เขียนคำอธิบายเอง (Custom)', value: 'CUSTOM', category: '' },
+            { text: '🍜 ข้าวกลางวัน/อาหารค่ำ', value: 'ค่าอาหารกลางวัน', category: 'FOOD' },
+            { text: '☕ กาแฟ/เครื่องดื่ม', value: 'กาแฟแก้วโปรด', category: 'FOOD' },
+            { text: '🍕 สั่งอาหารเดลิเวอรี', value: 'สั่ง Delivery มื้อค่ำ', category: 'FOOD' },
+            { text: '🚇 ค่ารถไฟฟ้า / MRT / BTS', value: 'ค่าเดินทางรถสาธารณะ', category: 'TRANSPORT' },
+            { text: '⛽ เติมน้ำมันรถ', value: 'เติมน้ำมันรถยนต์', category: 'TRANSPORT' },
+            { text: '🚗 เรียก Grab / Taxi', value: 'ค่าบริการ Grab / Taxi', category: 'TRANSPORT' },
+            { text: '👕 ซื้อเสื้อผ้า/แฟชั่น', value: 'ซื้อเสื้อผ้าใหม่', category: 'SHOPPING' },
+            { text: '🛒 ซื้อของเข้าบ้าน/ของชำ', value: 'ซื้อของชำเข้าบ้าน', category: 'SHOPPING' },
+            { text: '📺 หารค่า Netflix', value: 'จ่าย Netflix แชร์กลุ่ม', category: 'STREAMING' },
+            { text: '🎵 จ่าย Spotify', value: 'จ่าย Spotify Premium', category: 'STREAMING' },
+            { text: '🍿 ดูหนังโรงภาพยนตร์', value: 'ตั๋วหนังและป๊อปคอร์น', category: 'STREAMING' },
+            { text: '⚡ ค่าไฟฟ้า / ค่าน้ำประปา', value: 'จ่ายค่าไฟฟ้ารายเดือน', category: 'HOUSING' },
+            { text: '🏠 ค่าอินเทอร์เน็ตบ้าน', value: 'ค่าอินเทอร์เน็ตบ้าน', category: 'HOUSING' },
+            { text: '💊 ค่ายา / ค่ารักษาพยาบาล', value: 'ซื้อยา/อาหารเสริม', category: 'HEALTH' },
+            { text: '💇 ตัดผม / ทำเล็บ / สกินแคร์', value: 'บริการตัดผมแต่งทรง', category: 'HEALTH' },
+            { text: '💵 เงินเดือนโอนเข้า', value: 'เงินเดือนประจำออก', category: 'SALARY' },
+            { text: '💻 รับเงินค่าจ้างฟรีแลนซ์', value: 'ค่าจ้างฟรีแลนซ์/งานเสริม', category: 'SALARY' },
+            { text: '💰 ขายของออนไลน์ได้เงิน', value: 'รายได้จากการขายสินค้า', category: 'BUSINESS' }
+        ];
+
+        function populateTxQuickDescOptions() {
+            const selectEl = document.getElementById('txQuickDesc');
+            if (!selectEl) return;
+            selectEl.innerHTML = '';
+            
+            const isExpense = state.currentTxType === 'EXPENSE';
+            const expenseCatKeys = ['FOOD', 'TRANSPORT', 'SHOPPING', 'STREAMING', 'HOUSING', 'HEALTH', 'DEBT', 'OTHER_EXP'];
+            const incomeCatKeys = ['SALARY', 'REFUND', 'BUSINESS', 'OTHER_INC'];
+            
+            const customOpt = document.createElement('option');
+            customOpt.value = 'CUSTOM';
+            customOpt.innerText = '✍️ เขียนคำอธิบายเอง (Custom)';
+            selectEl.appendChild(customOpt);
+            
+            QUICK_TEMPLATES.forEach(t => {
+                if (t.value === 'CUSTOM') return;
+                const isMatch = isExpense ? expenseCatKeys.includes(t.category) : incomeCatKeys.includes(t.category);
+                if (isMatch) {
+                    const opt = document.createElement('option');
+                    opt.value = t.value;
+                    opt.innerText = t.text;
+                    opt.dataset.category = t.category;
+                    selectEl.appendChild(opt);
+                }
+            });
+        }
+
+        function populateTxCategoryOptions() {
+            const selectEl = document.getElementById('txCategory');
+            if (!selectEl) return;
+            selectEl.innerHTML = '';
+            
+            const isExpense = state.currentTxType === 'EXPENSE';
+            const catKeys = isExpense 
+                ? ['FOOD', 'TRANSPORT', 'SHOPPING', 'STREAMING', 'HOUSING', 'HEALTH', 'DEBT', 'OTHER_EXP']
+                : ['SALARY', 'REFUND', 'BUSINESS', 'OTHER_INC'];
+                
+            catKeys.forEach(k => {
+                const cat = CATEGORIES[k];
+                const opt = document.createElement('option');
+                opt.value = k;
+                opt.innerText = `${cat.name}`;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        function applyQuickDesc() {
+            const quickSelect = document.getElementById('txQuickDesc');
+            const descInput = document.getElementById('txDesc');
+            const catSelect = document.getElementById('txCategory');
+            
+            const selectedVal = quickSelect.value;
+            if (selectedVal === 'CUSTOM') {
+                descInput.value = '';
+                descInput.focus();
+            } else {
+                descInput.value = selectedVal;
+                const template = QUICK_TEMPLATES.find(t => t.value === selectedVal);
+                if (template && template.category) {
+                    catSelect.value = template.category;
+                }
+            }
+        }
+
+        function setTxType(type) {
+            state.currentTxType = type;
+            const btnExpense = document.getElementById('txTypeExpense');
+            const btnIncome = document.getElementById('txTypeIncome');
+            
+            if (type === 'EXPENSE') {
+                btnExpense.className = "py-2 text-center text-xs font-semibold rounded-lg bg-white text-slate-800 shadow-sm transition-all";
+                btnIncome.className = "py-2 text-center text-xs font-semibold rounded-lg text-slate-400 transition-all";
+            } else {
+                btnIncome.className = "py-2 text-center text-xs font-semibold rounded-lg bg-white text-slate-800 shadow-sm transition-all";
+                btnExpense.className = "py-2 text-center text-xs font-semibold rounded-lg text-slate-400 transition-all";
+            }
+            
+            populateTxQuickDescOptions();
+            populateTxCategoryOptions();
+        }
+
+        function dismissNotification(id) {
+            if (!state.dismissedNotifications.includes(id)) {
+                state.dismissedNotifications.push(id);
+                saveState();
+                renderNotifications();
+                updateNotificationBadge();
+            }
+        }
+
+        function renderCategorySummary() {
+            const container = document.getElementById('categorySummaryContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            const categorySums = {};
+            let totalExpense = 0;
+            
+            state.transactions.forEach(tx => {
+                const isExpense = tx.type === 'EXPENSE';
+                if (isExpense) {
+                    const catKey = tx.category || 'OTHER_EXP';
+                    categorySums[catKey] = (categorySums[catKey] || 0) + tx.amount;
+                    totalExpense += tx.amount;
+                }
+            });
+            
+            const sortedCategories = Object.entries(categorySums).sort((a, b) => b[1] - a[1]);
+            
+            if (sortedCategories.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4 text-slate-400 text-[11px]">
+                        ยังไม่มีรายจ่ายบันทึกในรอบนี้
+                    </div>
+                `;
+                return;
+            }
+            
+            sortedCategories.forEach(([catKey, amount]) => {
+                const cat = CATEGORIES[catKey] || { name: 'อื่นๆ', color: 'bg-slate-400', textColor: 'text-slate-500', icon: 'fa-ellipsis' };
+                const percentage = totalExpense > 0 ? Math.round((amount / totalExpense) * 100) : 0;
+                
+                const html = `
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center text-[11px]">
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full ${cat.color}"></span>
+                                <span class="font-bold text-slate-700"><i class="fa-solid ${cat.icon} mr-1 text-[10px] text-slate-400"></i> ${cat.name}</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="font-semibold text-slate-800">฿${amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                                <span class="text-slate-400 font-light ml-1">(${percentage}%)</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                            <div class="h-full ${cat.color} rounded-full transition-all" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        // Calculations & Summary
+        // Calculate
+        function calculateSummary() {
+            const totalCash = state.wallets.reduce((sum, w) => sum + w.balance, 0);
+            
+            const totalRecurring = state.recurringPayments
+                .filter(rec => rec.status === "WAITING")
+                .reduce((sum, rec) => sum + rec.amount, 0);
+
+            const totalCreditCards = state.creditCards.reduce((sum, cc) => sum + cc.balance, 0);
+
+            const totalDebts = state.debtors
+                .filter(d => d.status !== "PAID" && d.remainingAmount > 0)
+                .reduce((sum, deb) => sum + deb.remainingAmount, 0);
+
+            const safeToSpend = totalCash + totalDebts - totalCreditCards - totalRecurring;
+
+            document.getElementById('displaySafeToSpend').innerText = `฿${safeToSpend.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('displayTotalCash').innerText = `฿${totalCash.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('displayTotalRecurring').innerText = `฿${totalRecurring.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('displayTotalCreditCards').innerText = `฿${totalCreditCards.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('displayTotalDebts').innerText = `฿${totalDebts.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        // Gather Cash Flow items for Timeline Tracker (Next 30 days)
+        function getTimelineItems() {
+            const items = [];
+            const today = new Date();
+            
+            for (let i = 0; i < 30; i++) {
+                const targetDate = new Date(today);
+                targetDate.setDate(today.getDate() + i);
+                const day = targetDate.getDate();
+                
+                const dateStr = targetDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+                const dayEvents = [];
+                
+                // 1. Debtors (Incoming - due on day)
+                state.debtors.forEach(debtor => {
+                    if (debtor.status !== "PAID" && debtor.remainingAmount > 0 && debtor.dueDay === day) {
+                        const nextPaybackVal = getNextPaybackVal(debtor);
+                        dayEvents.push({
+                            type: 'INCOME',
+                            name: debtor.name,
+                            amount: nextPaybackVal,
+                            desc: debtor.memo
+                        });
+                    }
+                });
+                
+                // 2. Credit Cards (Outgoing - due on day)
+                state.creditCards.forEach(card => {
+                    if (card.balance > 0 && card.dueDay === day) {
+                        dayEvents.push({
+                            type: 'EXPENSE',
+                            name: card.name,
+                            amount: card.balance,
+                            desc: 'บิลบัตรเครดิต'
+                        });
+                    }
+                });
+                
+                // 3. Recurring Payments (Outgoing - due on day)
+                state.recurringPayments.forEach(rec => {
+                    if (rec.status === "WAITING" && rec.dueDay === day) {
+                        dayEvents.push({
+                            type: 'EXPENSE',
+                            name: rec.name,
+                            amount: rec.amount,
+                            desc: 'ค่าบริการรายเดือน'
+                        });
+                    }
+                });
+                
+                if (dayEvents.length > 0) {
+                    items.push({
+                        dateStr: dateStr,
+                        day: day,
+                        events: dayEvents
+                    });
+                }
+            }
+            return items;
+        }
+
+        // Render Lists and Views
+        function renderTimeline() {
+            const listContainer = document.getElementById('timelineTrackerContainer');
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+            
+            const items = getTimelineItems();
+            
+            if (items.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="w-full text-center py-4 text-slate-400 text-[11px] self-center">
+                        <i class="fa-regular fa-calendar text-lg mb-1 block"></i>
+                        ไม่มีรายการสภาพคล่องครบกำหนดใน 30 วันข้างหน้า
+                    </div>
+                `;
+                return;
+            }
+            
+            items.forEach(item => {
+                let eventsHTML = '';
+                let namesText = [];
+                
+                item.events.forEach(evt => {
+                    const isIncome = evt.type === 'INCOME';
+                    const badgeClass = isIncome 
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                        : 'bg-rose-50 text-rose-700 border-rose-100';
+                    const sign = isIncome ? '+' : '-';
+                    
+                    eventsHTML += `
+                        <div class="text-[9px] ${badgeClass} font-semibold py-0.5 px-1 rounded border truncate">
+                            ${sign}฿${evt.amount.toLocaleString('th-TH')}
+                        </div>
+                    `;
+                    namesText.push(`${evt.name} (${evt.desc})`);
+                });
+                
+                const cardHTML = `
+                    <div class="flex-shrink-0 w-28 bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center flex flex-col justify-between min-h-[105px] shadow-2xs hover:bg-slate-100 transition-colors">
+                        <div class="text-[10px] font-bold text-slate-500 uppercase border-b border-slate-200/40 pb-1 mb-1">${item.dateStr}</div>
+                        <div class="my-1 space-y-1">
+                            ${eventsHTML}
+                        </div>
+                        <div class="text-[8px] text-slate-400 truncate mt-1" title="${namesText.join(', ')}">
+                            ${item.events.map(e => e.name).join(' & ')}
+                        </div>
+                    </div>
+                `;
+                listContainer.insertAdjacentHTML('beforeend', cardHTML);
+            });
+        }
+
+        function renderDashboardWallets() {
+            const listContainer = document.getElementById('dashboardWalletList');
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+            
+            state.wallets.forEach(w => {
+                let iconClass = 'fa-solid fa-money-bill-wave text-emerald-500';
+                if (w.type === 'BANK') iconClass = 'fa-solid fa-building-columns text-blue-500';
+                if (w.type === 'E_WALLET') iconClass = 'fa-solid fa-mobile-screen-button text-indigo-500';
+                
+                const cardHTML = `
+                    <div class="bg-white rounded-2xl border border-slate-100 p-3 shadow-xs flex flex-col justify-between min-h-[75px] relative overflow-hidden">
+                        <div class="flex justify-between items-start">
+                            <span class="text-[9px] text-slate-400 font-semibold uppercase truncate block w-[70%]">${w.name}</span>
+                            <i class="${iconClass} text-xs"></i>
+                        </div>
+                        <span class="font-bold text-slate-800 text-[13px] block mt-1.5">฿${w.balance.toLocaleString('th-TH', { maximumFractionDigits: 1 })}</span>
+                    </div>
+                `;
+                listContainer.insertAdjacentHTML('beforeend', cardHTML);
+            });
+            
+            if (state.wallets.length === 0) {
+                listContainer.innerHTML = `<div class="col-span-3 text-center text-slate-400 text-xs py-4">ไม่มีบัญชี/กระเป๋าเงิน</div>`;
+            }
+        }
+
+        function renderDebtors() {
+            const listContainer = document.getElementById('debtorList');
+            listContainer.innerHTML = '';
+
+            const activeDebtors = state.debtors.filter(d => d.status !== "PAID" && d.remainingAmount > 0);
+            
+            // Add debtorCount update safely
+            const debtorCountEl = document.getElementById('debtorCount');
+            if (debtorCountEl) {
+                debtorCountEl.innerText = `ทั้งหมด ${activeDebtors.length} คน`;
+            }
+
+            activeDebtors.forEach((debtor) => {
+                const nextPaybackVal = getNextPaybackVal(debtor);
+                
+                let badgeHTML = '';
+                let typeText = '';
+                let badgeColor = '';
+                
+                if (debtor.type === 'CREDIT_CARD_INSTALLMENT') {
+                    const card = state.creditCards.find(c => c.id === debtor.cardId);
+                    typeText = 'ผ่อนแทนด้วยบัตรเครดิต';
+                    badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
+                    badgeHTML = `<span class="text-[10px] px-2 py-0.5 rounded-full border ${badgeColor}"><i class="fa-regular fa-credit-card mr-0.5"></i> ${card ? card.name : 'บัตรเครดิต'}</span>`;
+                } else if (debtor.type === 'INSTALLMENT') {
+                    typeText = 'ผ่อนจ่ายรายเดือน';
+                    badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
+                    badgeHTML = `<span class="text-[10px] px-2 py-0.5 rounded-full border ${badgeColor}"><i class="fa-solid fa-calendar-day mr-0.5"></i> ผ่อนรายเดือน</span>`;
+                } else if (debtor.type === 'SHARED_SUBSCRIPTION') {
+                    typeText = 'แชร์ค่าบริการรายเดือน';
+                    badgeColor = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                    badgeHTML = `<span class="text-[10px] px-2 py-0.5 rounded-full border ${badgeColor}"><i class="fa-solid fa-rotate mr-0.5"></i> แชร์รายเดือน</span>`;
+                } else {
+                    typeText = 'ยืมเงินสดก้อนเดียว';
+                    badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
+                    badgeHTML = `<span class="text-[10px] px-2 py-0.5 rounded-full border ${badgeColor}"><i class="fa-solid fa-money-bill-wave mr-0.5"></i> เงินสดก้อนเดียว</span>`;
+                }
+
+                const installmentText = debtor.type === 'SHARED_SUBSCRIPTION' && debtor.totalInstallments === 999 
+                    ? `ดีลทุกวันที่ ${debtor.dueDay} (แชร์ต่อเนื่องไม่มีกำหนด)` 
+                    : `ดีลทุกวันที่ ${debtor.dueDay} (เหลือ ${debtor.remainingInstallments} ${debtor.type === 'SHARED_SUBSCRIPTION' ? 'เดือน' : 'งวด'})`;
+
+                const cardHTML = `
+                    <div onclick="showDebtorDetail('${debtor.id}')" class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm relative overflow-hidden cursor-pointer hover:border-emerald-200 transition-colors">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm">${debtor.name}</h4>
+                                <p class="text-xs text-slate-400 mt-0.5 mb-1">${debtor.memo}</p>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    ${badgeHTML}
+                                    <span class="text-[10px] text-slate-400 self-center">${installmentText}</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs text-slate-400 block">ค้างสะสมทั้งหมด</span>
+                                <span class="font-bold text-rose-500 text-sm">฿${debtor.remainingAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100 mt-3 text-xs">
+                            <div>
+                                <span class="text-slate-400">งวดถัดไปที่ต้องคืน:</span>
+                                <span class="font-semibold text-slate-700">฿${nextPaybackVal.toLocaleString('th-TH')}</span>
+                            </div>
+                            <div class="flex gap-1">
+                                <button onclick="event.stopPropagation(); openShareSlip('${debtor.id}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-2.5 py-1.5 rounded-lg text-[11px] transition-colors flex items-center gap-1">
+                                    <i class="fa-regular fa-paper-plane"></i> แชร์สลิปทวง
+                                </button>
+                                <button onclick="event.stopPropagation(); openReceivePaybackModal('${debtor.id}')" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] transition-colors flex items-center gap-1">
+                                    <i class="fa-solid fa-check"></i> รับชำระคืน
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                listContainer.insertAdjacentHTML('beforeend', cardHTML);
+            });
+
+            if (activeDebtors.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        <i class="fa-regular fa-folder-open text-3xl mb-2 text-slate-300 block"></i>
+                        ไม่มีรายการหนี้คงเหลือที่ต้องทวงถาม ยินดีด้วยครับ!
+                    </div>
+                `;
+            }
+            renderTimeline();
+        }
+
+        function renderCreditCards() {
+            const listContainer = document.getElementById('creditCardList');
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+
+            state.creditCards.forEach((card) => {
+                const availableLimit = card.limit - card.balance;
+                const progressPercent = Math.min((card.balance / card.limit) * 100, 100);
+
+                const cardHTML = `
+                    <div onclick="showCardDetail('${card.id}')" class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm relative overflow-hidden cursor-pointer hover:border-blue-200 transition-colors">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-10 h-7 bg-slate-800 text-white text-[10px] font-bold rounded-md flex items-center justify-center border border-slate-700">
+                                    CARD
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-800 text-xs">${card.name}</h4>
+                                    <span class="text-[10px] text-slate-400 block mt-0.5">ตัดรอบวันที่ ${card.billingDay} | ครบกำหนดจ่ายวันที่ ${card.dueDay} ของเดือน</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] text-slate-400 block">ยอดค้างชำระ</span>
+                                <span class="font-bold text-slate-800 text-sm">฿${card.balance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar of Card Limit Used -->
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between text-[10px] text-slate-400">
+                                <span>วงเงินรวม: ฿${card.limit.toLocaleString('th-TH')}</span>
+                                <span>ว่างใช้ได้: ฿${availableLimit.toLocaleString('th-TH')}</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div class="bg-rose-500 h-full rounded-full transition-all" style="width: ${progressPercent}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                listContainer.insertAdjacentHTML('beforeend', cardHTML);
+            });
+            
+            if (state.creditCards.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        <i class="fa-regular fa-credit-card text-3xl mb-2 text-slate-300 block"></i>
+                        ไม่มีบัตรเครดิตในระบบ กดปุ่มเกียร์ตั้งค่าด้านบนเพื่อเพิ่มบัตรเครดิตใบแรกของคุณ!
+                    </div>
+                `;
+            }
+        }
+
+        function renderRecurring() {
+            const listContainer = document.getElementById('recurringList');
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+
+            const unpaidRecurring = state.recurringPayments.filter(rec => rec.status === "WAITING");
+            document.getElementById('recurringCount').innerText = `ค้างชำระประจำ ${unpaidRecurring.length} รายการ`;
+
+            state.recurringPayments.forEach((rec) => {
+                const isPaid = rec.status === "PAID";
+                const statusBadge = isPaid 
+                    ? `<span class="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-emerald-100">จ่ายแล้วเดือนนี้</span>`
+                    : `<span class="bg-amber-50 text-amber-700 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-amber-100">รอหักงวดถัดไป</span>`;
+
+                const cardHTML = `
+                    <div onclick="showRecurringDetail('${rec.id}')" class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm relative overflow-hidden flex justify-between items-center cursor-pointer hover:border-amber-200 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 ${isPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'} rounded-xl flex items-center justify-center">
+                                <i class="fa-solid fa-rotate-right text-sm"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-xs">${rec.name}</h4>
+                                <span class="text-[10px] text-slate-400 block mt-0.5">ครบกำหนดวันที่ ${rec.dueDay} ของทุกเดือน</span>
+                                <div class="mt-1">${statusBadge}</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-slate-800 block text-sm">฿${rec.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                            ${!isPaid ? `
+                            <button onclick="event.stopPropagation(); openPayRecurringModal('${rec.id}')" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-[10px] px-2.5 py-1 rounded-md transition-colors mt-1">
+                                ยืนยันจ่าย
+                            </button>` : ''}
+                        </div>
+                    </div>
+                `;
+                listContainer.insertAdjacentHTML('beforeend', cardHTML);
+            });
+            
+            if (state.recurringPayments.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        <i class="fa-regular fa-folder-open text-3xl mb-2 text-slate-300 block"></i>
+                        ไม่มีรายการบริการซ้ำๆ รายเดือนในระบบ
+                    </div>
+                `;
+            }
+        }
+
+        function renderTransactions() {
+            const listContainer = document.getElementById('transactionHistory');
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+
+            state.transactions.forEach((tx) => {
+                const isExpense = tx.type === "EXPENSE";
+                const cat = CATEGORIES[tx.category];
+                const iconClass = cat ? `fa-solid ${cat.icon}` : (isExpense ? "fa-solid fa-arrow-up-right-from-square" : "fa-solid fa-arrow-down-left-and-arrow-up-right-to-side");
+                const iconBg = cat ? `${cat.color}/10 ${cat.textColor}` : (isExpense ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600");
+                const amountSign = isExpense ? "-" : "+";
+                const amountColor = isExpense ? "text-rose-600" : "text-emerald-600";
+
+                let sourceName = 'ไม่ระบุ';
+                const wallet = state.wallets.find(w => w.id === tx.walletId);
+                const card = state.creditCards.find(c => c.id === tx.walletId);
+                
+                if (wallet) {
+                    sourceName = wallet.name;
+                } else if (card) {
+                    sourceName = `${card.name} (บัตรเครดิต)`;
+                } else if (tx.walletId === "บัตรเครดิต") {
+                    sourceName = "บัตรเครดิต";
+                }
+
+                const txHTML = `
+                    <div onclick="showTransactionDetail('${tx.id}')" class="flex items-center justify-between p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 ${iconBg} rounded-lg flex items-center justify-center shrink-0">
+                                <i class="${iconClass} text-[11px]"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 flex items-center gap-1.5">
+                                    ${tx.desc}
+                                    ${cat ? `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-normal shrink-0">${cat.name}</span>` : ''}
+                                </h4>
+                                <span class="text-[10px] text-slate-400 block mt-0.5">ผ่าน: ${sourceName} | ${tx.date}</span>
+                            </div>
+                        </div>
+                        <span class="font-bold ${amountColor} text-sm">${amountSign}฿${tx.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                `;
+                listContainer.insertAdjacentHTML('beforeend', txHTML);
+            });
+
+            if(state.transactions.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        ไม่มีประวัติธุรกรรมจำลอง กดปุ่มจดรับจ่ายด้านบนเพื่อเพิ่มยอดสิครับ!
+                    </div>
+                `;
+            }
+        }
+
+        // MOBILE BOTTOM TAB BAR CONTROL
+        function switchMainTab(tabId) {
+            state.activeTab = tabId;
+            const tabs = ['home', 'debtors', 'cards', 'recurring'];
+            
+            tabs.forEach(t => {
+                const el = document.getElementById(`view-${t}`);
+                const btn = document.getElementById(`bottomTab-${t}`);
+                
+                if (t === tabId) {
+                    el.classList.remove('hidden');
+                    if (btn) {
+                        btn.className = "flex flex-col items-center gap-1 text-emerald-500 transition-colors";
+                    }
+                } else {
+                    el.classList.add('hidden');
+                    if (btn) {
+                        btn.className = "flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-500 transition-colors";
+                    }
+                }
+            });
+
+            saveState();
+            
+            // Render active tab
+            calculateSummary();
+            if (tabId === 'home') {
+                renderDashboardWallets();
+                renderTransactions();
+            }
+            if (tabId === 'debtors') {
+                renderDebtors();
+            }
+            if (tabId === 'cards') {
+                renderCreditCards();
+            }
+            if (tabId === 'recurring') {
+                renderRecurring();
+            }
+            
+            updateNotificationBadge();
+        }
+
+        // Dynamic Form Dropdowns Populater
+        function populateTxWalletOptions() {
+            const selectEl = document.getElementById('txWallet');
+            if (!selectEl) return;
+            selectEl.innerHTML = '';
+            
+            const type = state.currentTxType;
+            
+            const walletGroup = document.createElement('optgroup');
+            walletGroup.label = "บัญชี / กระเป๋าเงินสด";
+            state.wallets.forEach(w => {
+                const opt = document.createElement('option');
+                opt.value = w.id;
+                opt.innerText = `${w.name} (คงเหลือ: ฿${w.balance.toLocaleString('th-TH')})`;
+                walletGroup.appendChild(opt);
+            });
+            selectEl.appendChild(walletGroup);
+            
+            if (type === 'EXPENSE') {
+                const cardGroup = document.createElement('optgroup');
+                cardGroup.label = "บัตรเครดิต (เพิ่มยอดรูดค้างจ่าย)";
+                state.creditCards.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.innerText = `${c.name} (วงเงินคงเหลือ: ฿${(c.limit - c.balance).toLocaleString('th-TH')})`;
+                    cardGroup.appendChild(opt);
+                });
+                selectEl.appendChild(cardGroup);
+            }
+        }
+
+        function populateDebtCardOptions() {
+            const selectEl = document.getElementById('debtCardId');
+            if (!selectEl) return;
+            selectEl.innerHTML = '';
+            
+            state.creditCards.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.innerText = `${c.name} (ครบกำหนดจ่ายวันที่ ${c.dueDay})`;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        function populateDebtSubscriptionOptions() {
+            const selectEl = document.getElementById('debtLinkedSubscriptionId');
+            if (!selectEl) return;
+            selectEl.innerHTML = '<option value="">-- ไม่ผูกบริการหลัก (ต้องกดขึ้นรอบใหม่เอง) --</option>';
+            
+            state.recurringPayments.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                opt.innerText = `${r.name} (ค่าบริการหลัก: ฿${r.amount.toLocaleString('th-TH')})`;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        function populateCCPaymentCardOptions() {
+            const selectEl = document.getElementById('ccPaymentCardId');
+            if (!selectEl) return;
+            selectEl.innerHTML = '';
+            
+            state.creditCards.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.innerText = `${c.name} (ค้างจ่ายบิล: ฿${c.balance.toLocaleString('th-TH')})`;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        function populateCCPaymentWalletOptions() {
+            const selectEl = document.getElementById('ccPaymentWallet');
+            if (!selectEl) return;
+            selectEl.innerHTML = '';
+            
+            state.wallets.forEach(w => {
+                const opt = document.createElement('option');
+                opt.value = w.id;
+                opt.innerText = `${w.name} (คงเหลือ: ฿${w.balance.toLocaleString('th-TH')})`;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        function populatePaybackWalletOptions() {
+            const selectEl = document.getElementById('paybackWallet');
+            if (!selectEl) return;
+            selectEl.innerHTML = '';
+            
+            state.wallets.forEach(w => {
+                const opt = document.createElement('option');
+                opt.value = w.id;
+                opt.innerText = `${w.name} (คงเหลือ: ฿${w.balance.toLocaleString('th-TH')})`;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        // Submits Handlers
+        function handleTransactionSubmit(e) {
+            e.preventDefault();
+            const amount = parseFloat(document.getElementById('txAmount').value);
+            const desc = document.getElementById('txDesc').value.trim();
+            const walletId = document.getElementById('txWallet').value;
+            const type = state.currentTxType;
+
+            if (isNaN(amount) || amount <= 0 || !desc) return;
+
+            const wallet = state.wallets.find(w => w.id === walletId);
+            const card = state.creditCards.find(c => c.id === walletId);
+
+            if (type === 'EXPENSE') {
+                if (wallet) {
+                    if (wallet.balance < amount) {
+                        alertModal(`ยอดเงินสดในกระเป๋า ${wallet.name} มีไม่พอชำระ!`);
+                        return;
+                    }
+                    wallet.balance -= amount;
+                } else if (card) {
+                    card.balance += amount;
+                } else {
+                    alertModal("ไม่พบแหล่งชำระเงินที่ต้องการ!");
+                    return;
+                }
+            } else { // INCOME
+                if (wallet) {
+                    wallet.balance += amount;
+                } else {
+                    alertModal("เงินได้รายรับต้องเข้ากระเป๋าเงินสด/บัญชีธนาคารเท่านั้น");
+                    return;
+                }
+            }
+
+            const category = document.getElementById('txCategory').value;
+
+            state.transactions.unshift({
+                id: `tx-${Date.now()}`,
+                type: type,
+                desc: desc,
+                category: category || (type === 'EXPENSE' ? 'OTHER_EXP' : 'OTHER_INC'),
+                amount: amount,
+                walletId: walletId,
+                date: "วันนี้ " + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+            });
+
+            saveState();
+            closeTransactionModal();
+            document.getElementById('transactionForm').reset();
+            switchMainTab('home');
+        }
+
+        function handleDebtSubmit(e) {
+            e.preventDefault();
+            const debtorName = document.getElementById('debtorName').value.trim();
+            const debtType = document.getElementById('debtType').value;
+            const debtCardId = document.getElementById('debtCardId').value;
+            const debtLinkedSubscriptionId = document.getElementById('debtLinkedSubscriptionId') ? document.getElementById('debtLinkedSubscriptionId').value : '';
+            const debtAmount = parseFloat(document.getElementById('debtAmount').value);
+            const debtInstallments = parseInt(document.getElementById('debtInstallments').value);
+            const debtDueDay = parseInt(document.getElementById('debtDueDay').value);
+            const debtMemo = document.getElementById('debtMemo').value.trim() || "บันทึกยืมเงินส่วนกลาง";
+
+            if (isNaN(debtAmount) || debtAmount <= 0 || isNaN(debtInstallments) || debtInstallments <= 0 || isNaN(debtDueDay) || debtDueDay < 1 || debtDueDay > 31 || !debtorName) return;
+
+            const newDebtor = {
+                id: `debt-${Date.now()}`,
+                name: debtorName,
+                type: debtType,
+                cardId: debtType === 'CREDIT_CARD_INSTALLMENT' ? debtCardId : null,
+                linkedSubscriptionId: debtType === 'SHARED_SUBSCRIPTION' ? (debtLinkedSubscriptionId || null) : null,
+                totalAmount: debtAmount,
+                remainingAmount: debtAmount,
+                totalInstallments: debtInstallments,
+                remainingInstallments: debtInstallments,
+                dueDay: debtDueDay,
+                memo: debtMemo,
+                status: "UNPAID"
+            };
+
+            if (debtType === 'CREDIT_CARD_INSTALLMENT') {
+                const card = state.creditCards.find(c => c.id === debtCardId);
+                if (card) {
+                    card.balance += debtAmount;
+                } else {
+                    alertModal("ไม่พบบัตรเครดิตที่ระบุ!");
+                    return;
+                }
+            } else if (debtType === 'SHARED_SUBSCRIPTION') {
+                // Shared subscription does not deduct from wallet upon creation
+            } else {
+                const defaultWallet = state.wallets.find(w => w.type === 'BANK') || state.wallets[0];
+                if (defaultWallet) {
+                    if (defaultWallet.balance < debtAmount) {
+                        alertModal(`ยอดเงินสดในกระเป๋า ${defaultWallet.name} ติดลบชั่วคราวจากการให้ยืม!`);
+                    }
+                    defaultWallet.balance -= debtAmount;
+                }
+            }
+
+            state.debtors.unshift(newDebtor);
+
+            // Log Transaction
+            if (debtType !== 'SHARED_SUBSCRIPTION') {
+                state.transactions.unshift({
+                    id: `tx-${Date.now()}`,
+                    type: "EXPENSE",
+                    desc: `ให้ยืม / รูดแทนเพื่อน: ${debtorName} (${debtMemo})`,
+                    amount: debtAmount,
+                    walletId: debtType === 'CREDIT_CARD_INSTALLMENT' ? debtCardId : (state.wallets.find(w => w.type === 'BANK') || state.wallets[0]).id,
+                    date: "วันนี้ " + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+                });
+            } else {
+                state.transactions.unshift({
+                    id: `tx-${Date.now()}`,
+                    type: "INCOME",
+                    desc: `เริ่มแชร์ค่าบริการรายเดือน: ${debtorName} (${debtMemo})`,
+                    amount: 0,
+                    walletId: (state.wallets.find(w => w.type === 'BANK') || state.wallets[0]).id,
+                    date: "วันนี้ " + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+                });
+            }
+
+            saveState();
+            closeDebtModal();
+            document.getElementById('debtForm').reset();
+            switchMainTab('debtors');
+        }
+
+        function handleCCPaymentSubmit(e) {
+            e.preventDefault();
+            const cardId = document.getElementById('ccPaymentCardId').value;
+            const amount = parseFloat(document.getElementById('ccPaymentAmount').value);
+            const walletId = document.getElementById('ccPaymentWallet').value;
+
+            const card = state.creditCards.find(c => c.id === cardId);
+            const wallet = state.wallets.find(w => w.id === walletId);
+            
+            if (!card || !wallet || isNaN(amount) || amount <= 0) return;
+
+            if (wallet.balance < amount) {
+                alertModal(`ไม่สามารถจ่ายบัตรได้: ยอดเงินในบัญชี ${wallet.name} มีไม่พอชำระหนี้บิลบัตรนี้!`);
+                return;
+            }
+
+            // Deduct from wallet and clear card balance
+            wallet.balance -= amount;
+            card.balance = Math.max(card.balance - amount, 0);
+
+            // Log transaction
+            state.transactions.unshift({
+                id: `tx-${Date.now()}`,
+                type: "EXPENSE",
+                desc: `ชำระหนี้บัตรเครดิต: ${card.name}`,
+                amount: amount,
+                walletId: walletId,
+                date: "วันนี้ " + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+            });
+
+            saveState();
+            closeCreditCardPaymentModal();
+            document.getElementById('ccPaymentForm').reset();
+            switchMainTab('cards');
+        }
+
+        function updateCCPaymentMax() {
+            const cardId = document.getElementById('ccPaymentCardId').value;
+            const card = state.creditCards.find(c => c.id === cardId);
+            if (card) {
+                document.getElementById('ccPaymentAmount').value = card.balance;
+            }
+        }
+
+        function fillCCMaxAmount() {
+            updateCCPaymentMax();
+        }
+
+        // Receive Payback Modal Handlers
+        function openReceivePaybackModal(debtorId) {
+            const debtor = state.debtors.find(d => d.id === debtorId);
+            if (!debtor) return;
+            
+            const nextPaybackVal = getNextPaybackVal(debtor);
+            
+            document.getElementById('paybackDebtorId').value = debtor.id;
+            document.getElementById('paybackDebtorName').innerText = debtor.name;
+            document.getElementById('paybackTotalOwed').innerText = `฿${debtor.remainingAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+            document.getElementById('paybackInstallmentsLeft').innerText = 
+                debtor.type === 'SHARED_SUBSCRIPTION' && debtor.totalInstallments === 999 
+                ? 'ต่อเนื่อง (ไม่มีกำหนด)' 
+                : `${debtor.remainingInstallments} ${debtor.type === 'SHARED_SUBSCRIPTION' ? 'เดือน' : 'งวด'}`;
+            document.getElementById('paybackAmount').value = nextPaybackVal;
+            
+            populatePaybackWalletOptions();
+            
+            document.getElementById('receivePaybackModal').classList.remove('hidden');
+        }
+
+        function closeReceivePaybackModal() {
+            document.getElementById('receivePaybackModal').classList.add('hidden');
+        }
+
+        function handleReceivePaybackSubmit(e) {
+            e.preventDefault();
+            const debtorId = document.getElementById('paybackDebtorId').value;
+            const paybackAmount = parseFloat(document.getElementById('paybackAmount').value);
+            const walletId = document.getElementById('paybackWallet').value;
+            
+            const debtor = state.debtors.find(d => d.id === debtorId);
+            const wallet = state.wallets.find(w => w.id === walletId);
+            
+            if (!debtor || !wallet || isNaN(paybackAmount) || paybackAmount <= 0) return;
+            
+            if (paybackAmount > debtor.remainingAmount) {
+                alertModal("ยอดเงินที่คืนมากกว่าหนี้คงค้างทั้งหมด!");
+                return;
+            }
+            
+            // Adjust debtor remaining amounts and installments
+            debtor.remainingAmount -= paybackAmount;
+            debtor.remainingInstallments = Math.max(debtor.remainingInstallments - 1, 0);
+            
+            // Add back to selected cash wallet
+            wallet.balance += paybackAmount;
+            
+            // Mark as paid if finished
+            if (debtor.remainingAmount <= 0 || debtor.remainingInstallments <= 0) {
+                debtor.status = "PAID";
+                debtor.remainingAmount = 0;
+                debtor.remainingInstallments = 0;
+            }
+            
+            // Log Transaction
+            state.transactions.unshift({
+                id: `tx-${Date.now()}`,
+                type: "INCOME",
+                desc: `${debtor.name} จ่ายเงินคืนหนี้ส่วนตัว (${debtor.memo})`,
+                amount: paybackAmount,
+                walletId: wallet.id,
+                date: "วันนี้ " + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+            });
+            
+            saveState();
+            closeReceivePaybackModal();
+            switchMainTab('debtors');
+        }
+
+        // Pay Recurring Modal Handlers
+        function openPayRecurringModal(recurringId) {
+            const rec = state.recurringPayments.find(r => r.id === recurringId);
+            if (!rec) return;
+            
+            document.getElementById('payRecurringId').value = rec.id;
+            document.getElementById('payRecurringName').innerText = rec.name;
+            document.getElementById('payRecurringAmount').innerText = `฿${rec.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+            
+            // Populate wallets
+            const selectEl = document.getElementById('payRecurringWallet');
+            selectEl.innerHTML = '';
+            state.wallets.forEach(w => {
+                const opt = document.createElement('option');
+                opt.value = w.id;
+                opt.innerText = `${w.name} (คงเหลือ: ฿${w.balance.toLocaleString('th-TH')})`;
+                selectEl.appendChild(opt);
+            });
+            
+            document.getElementById('payRecurringModal').classList.remove('hidden');
+        }
+
+        function closePayRecurringModal() {
+            document.getElementById('payRecurringModal').classList.add('hidden');
+        }
+
+        // Pay Subscriptions
+        function handlePayRecurringSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('payRecurringId').value;
+            const walletId = document.getElementById('payRecurringWallet').value;
+            
+            const rec = state.recurringPayments.find(r => r.id === id);
+            const wallet = state.wallets.find(w => w.id === walletId);
+            
+            if (!rec || !wallet) return;
+            
+            if (wallet.balance < rec.amount) {
+                alertModal(`ไม่สามารถชำระค่าบริการ: ยอดเงินในบัญชี ${wallet.name} มีไม่พอชำระ!`);
+                return;
+            }
+            
+            wallet.balance -= rec.amount;
+            rec.status = "PAID";
+            
+            state.transactions.unshift({
+                id: `tx-${Date.now()}`,
+                type: "EXPENSE",
+                desc: `จ่ายตัดเงินอัตโนมัติ: ${rec.name}`,
+                amount: rec.amount,
+                walletId: wallet.id,
+                date: "วันนี้ " + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+            });
+
+            // Reset or accumulate linked debtors
+            const linkedDebtors = state.debtors.filter(d => d.type === 'SHARED_SUBSCRIPTION' && d.linkedSubscriptionId === rec.id);
+            let resetCount = 0;
+            let accumulatedCount = 0;
+            
+            linkedDebtors.forEach(debtor => {
+                if (debtor.totalInstallments === 999 || debtor.remainingInstallments > 0) {
+                    if (debtor.status === 'PAID') {
+                        debtor.status = 'UNPAID';
+                        debtor.remainingAmount = debtor.totalAmount;
+                        resetCount++;
+                    } else {
+                        debtor.remainingAmount += debtor.totalAmount;
+                        accumulatedCount++;
+                    }
+                }
+            });
+            
+            if (resetCount > 0 || accumulatedCount > 0) {
+                let msg = `ชำระค่าบริการสำเร็จ! `;
+                if (resetCount > 0) msg += `รีเซ็ตยอดเรียกเก็บลูกหนี้แชร์รายเดือน ${resetCount} คนเรียบร้อย `;
+                if (accumulatedCount > 0) msg += `และสะสมยอดค้างชำระเพิ่มอีก ${accumulatedCount} คน `;
+                alertModal(msg);
+            }
+            
+            saveState();
+            closePayRecurringModal();
+            switchMainTab('recurring');
+        }
+
+        // Settings Modal and CRUD Tab Switching
+        function openSettingsModal() {
+            switchSettingsTab('wallets');
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+            hideWalletForm();
+            hideCardForm();
+        }
+
+        let activeSettingsTab = 'wallets';
+        function switchSettingsTab(tabId) {
+            activeSettingsTab = tabId;
+            const tabs = ['wallets', 'cards', 'system'];
+            tabs.forEach(t => {
+                const el = document.getElementById(`setTab-${t}`);
+                const btn = document.getElementById(`setTabBtn-${t}`);
+                if (t === tabId) {
+                    el.classList.remove('hidden');
+                    btn.className = "flex-1 py-1.5 text-center font-semibold rounded-lg bg-white text-slate-800 shadow-xs";
+                } else {
+                    el.classList.add('hidden');
+                    btn.className = "flex-1 py-1.5 text-center font-semibold rounded-lg text-slate-500 hover:text-slate-800";
+                }
+            });
+            
+            if (tabId === 'wallets') renderSettingsWallets();
+            if (tabId === 'cards') renderSettingsCards();
+        }
+
+        // Settings CRUD Lists
+        function renderSettingsWallets() {
+            const listContainer = document.getElementById('settingsWalletList');
+            listContainer.innerHTML = '';
+            
+            state.wallets.forEach(w => {
+                const itemHTML = `
+                    <div class="flex items-center justify-between p-3 text-xs">
+                        <div>
+                            <span class="font-bold text-slate-800">${w.name}</span>
+                            <span class="text-[10px] text-slate-400 block">${w.type} | ฿${w.balance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="editWallet('${w.id}')" class="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteWallet('${w.id}')" class="w-7 h-7 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition-colors"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+                listContainer.insertAdjacentHTML('beforeend', itemHTML);
+            });
+            
+            if (state.wallets.length === 0) {
+                listContainer.innerHTML = `<div class="p-4 text-center text-slate-400">ไม่มีบัญชีกระเป๋าเงินสดในระบบ</div>`;
+            }
+        }
+
+        function renderSettingsCards() {
+            const listContainer = document.getElementById('settingsCardList');
+            listContainer.innerHTML = '';
+            
+            state.creditCards.forEach(c => {
+                const itemHTML = `
+                    <div class="flex items-center justify-between p-3 text-xs">
+                        <div>
+                            <span class="font-bold text-slate-800">${c.name}</span>
+                            <span class="text-[10px] text-slate-400 block">วงเงิน: ฿${c.limit.toLocaleString('th-TH')} | ยอดรูดหนี้: ฿${c.balance.toLocaleString('th-TH')}</span>
+                            <span class="text-[9px] text-slate-400 block">ตัดรอบวันที่ ${c.billingDay} | ดีลชำระวันที่ ${c.dueDay}</span>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="editCard('${c.id}')" class="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteCard('${c.id}')" class="w-7 h-7 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition-colors"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+                listContainer.insertAdjacentHTML('beforeend', itemHTML);
+            });
+            
+            if (state.creditCards.length === 0) {
+                listContainer.innerHTML = `<div class="p-4 text-center text-slate-400">ไม่มีบัตรเครดิตในระบบ</div>`;
+            }
+        }
+
+        function showAddWalletForm() {
+            document.getElementById('walletFormWrapper').classList.remove('hidden');
+            document.getElementById('walletFormTitle').innerText = "เพิ่มกระเป๋าเงินใหม่";
+            document.getElementById('editWalletId').value = "";
+            document.getElementById('setWalletName').value = "";
+            document.getElementById('setWalletType').value = "CASH";
+            document.getElementById('setWalletBalance').value = "";
+        }
+
+        function hideWalletForm() {
+            document.getElementById('walletFormWrapper').classList.add('hidden');
+        }
+
+        function editWallet(walletId) {
+            const w = state.wallets.find(item => item.id === walletId);
+            if (!w) return;
+            document.getElementById('walletFormWrapper').classList.remove('hidden');
+            document.getElementById('walletFormTitle').innerText = `แก้ไขกระเป๋าเงิน: ${w.name}`;
+            document.getElementById('editWalletId').value = w.id;
+            document.getElementById('setWalletName').value = w.name;
+            document.getElementById('setWalletType').value = w.type;
+            document.getElementById('setWalletBalance').value = w.balance;
+        }
+
+        function deleteWallet(walletId) {
+            if (state.wallets.length <= 1) {
+                alertModal("ไม่สามารถลบกระเป๋าเงินใบสุดท้ายได้! ระบบต้องการอย่างน้อย 1 ใบ");
+                return;
+            }
+            if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบกระเป๋าเงินนี้?")) {
+                state.wallets = state.wallets.filter(w => w.id !== walletId);
+                saveState();
+                renderSettingsWallets();
+                refreshAppUI();
+                if (state.activeTab === 'home') renderDashboardWallets();
+            }
+        }
+
+        function saveWalletSubmit() {
+            const id = document.getElementById('editWalletId').value;
+            const name = document.getElementById('setWalletName').value.trim();
+            const type = document.getElementById('setWalletType').value;
+            const balance = parseFloat(document.getElementById('setWalletBalance').value);
+            
+            if (!name || isNaN(balance)) {
+                alertModal("กรุณากรอกข้อมูลและยอดคงเหลือให้ครบถ้วน");
+                return;
+            }
+            
+            if (id) {
+                const w = state.wallets.find(item => item.id === id);
+                if (w) {
+                    w.name = name;
+                    w.type = type;
+                    w.balance = balance;
+                }
+            } else {
+                const newWallet = {
+                    id: `w-${Date.now()}`,
+                    name: name,
+                    type: type,
+                    balance: balance
+                };
+                state.wallets.push(newWallet);
+            }
+            
+            saveState();
+            hideWalletForm();
+            renderSettingsWallets();
+            refreshAppUI();
+            if (state.activeTab === 'home') renderDashboardWallets();
+        }
+
+        function showAddCardForm() {
+            document.getElementById('cardFormWrapper').classList.remove('hidden');
+            document.getElementById('cardFormTitle').innerText = "เพิ่มบัตรเครดิตใหม่";
+            document.getElementById('editCardId').value = "";
+            document.getElementById('setCardName').value = "";
+            document.getElementById('setCardLimit').value = "";
+            document.getElementById('setCardBalance').value = "0.00";
+            document.getElementById('setCardBillingDay').value = "10";
+            document.getElementById('setCardDueDay').value = "25";
+        }
+
+        function hideCardForm() {
+            document.getElementById('cardFormWrapper').classList.add('hidden');
+        }
+
+        function editCard(cardId) {
+            const c = state.creditCards.find(item => item.id === cardId);
+            if (!c) return;
+            document.getElementById('cardFormWrapper').classList.remove('hidden');
+            document.getElementById('cardFormTitle').innerText = `แก้ไขบัตรเครดิต: ${c.name}`;
+            document.getElementById('editCardId').value = c.id;
+            document.getElementById('setCardName').value = c.name;
+            document.getElementById('setCardLimit').value = c.limit;
+            document.getElementById('setCardBalance').value = c.balance;
+            document.getElementById('setCardBillingDay').value = c.billingDay;
+            document.getElementById('setCardDueDay').value = c.dueDay;
+        }
+
+        function deleteCard(cardId) {
+            if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบบัตรเครดิตนี้?")) {
+                state.creditCards = state.creditCards.filter(c => c.id !== cardId);
+                state.debtors.forEach(d => {
+                    if (d.cardId === cardId) {
+                        d.cardId = null;
+                        d.type = 'INSTALLMENT';
+                    }
+                });
+                saveState();
+                renderSettingsCards();
+                refreshAppUI();
+            }
+        }
+
+        function saveCardSubmit() {
+            const id = document.getElementById('editCardId').value;
+            const name = document.getElementById('setCardName').value.trim();
+            const limit = parseFloat(document.getElementById('setCardLimit').value);
+            const balance = parseFloat(document.getElementById('setCardBalance').value);
+            const billingDay = parseInt(document.getElementById('setCardBillingDay').value);
+            const dueDay = parseInt(document.getElementById('setCardDueDay').value);
+            
+            if (!name || isNaN(limit) || isNaN(balance) || isNaN(billingDay) || isNaN(dueDay) || billingDay < 1 || billingDay > 31 || dueDay < 1 || dueDay > 31) {
+                alertModal("กรุณากรอกข้อมูลให้ถูกต้อง (วันกำหนดชำระ/วันตัดรอบ ต้องอยู่ระหว่าง 1-31)");
+                return;
+            }
+            
+            if (id) {
+                const c = state.creditCards.find(item => item.id === id);
+                if (c) {
+                    c.name = name;
+                    c.limit = limit;
+                    c.balance = balance;
+                    c.billingDay = billingDay;
+                    c.dueDay = dueDay;
+                }
+            } else {
+                const newCard = {
+                    id: `c-${Date.now()}`,
+                    name: name,
+                    limit: limit,
+                    balance: balance,
+                    billingDay: billingDay,
+                    dueDay: dueDay
+                };
+                state.creditCards.push(newCard);
+            }
+            
+            saveState();
+            hideCardForm();
+            renderSettingsCards();
+            refreshAppUI();
+        }
+
+        // Share Slip Modal control
+        function openShareSlip(debtorId) {
+            const debtor = state.debtors.find(d => d.id === debtorId);
+            if (!debtor) return;
+
+            const nextPaybackVal = getNextPaybackVal(debtor);
+            
+            document.getElementById('slipDebtorName').innerText = debtor.name;
+            document.getElementById('slipDebtMemo').innerText = debtor.memo;
+            document.getElementById('slipAmountToPay').innerText = `฿${nextPaybackVal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+            
+            let debtTypeStr = 'ยืมเงินสดส่วนตัว';
+            if (debtor.type === 'CREDIT_CARD_INSTALLMENT') {
+                const card = state.creditCards.find(c => c.id === debtor.cardId);
+                debtTypeStr = `ผ่อนร่วมบัตรเครดิต (${card ? card.name : 'บัตรเครดิต'})`;
+            } else if (debtor.type === 'INSTALLMENT') {
+                debtTypeStr = 'ผ่อนยืมชำระรายเดือน';
+            } else if (debtor.type === 'SHARED_SUBSCRIPTION') {
+                debtTypeStr = 'แชร์ค่าบริการรายเดือน';
+            }
+            document.getElementById('slipDebtType').innerText = debtTypeStr;
+
+            const progressText = debtor.type === 'SHARED_SUBSCRIPTION'
+                ? (debtor.totalInstallments === 999 ? 'แชร์บริการต่อเนื่อง (ไม่มีกำหนด)' : `เดือนที่ ${debtor.totalInstallments - debtor.remainingInstallments + 1} / ${debtor.totalInstallments} เดือน`)
+                : (debtor.totalInstallments > 1 
+                    ? `งวดที่ ${debtor.totalInstallments - debtor.remainingInstallments + 1} / ${debtor.totalInstallments} งวด`
+                    : 'ชำระคืนครบยอดก้อนเดียว');
+            document.getElementById('slipInstallmentProgress').innerText = progressText;
+
+            document.getElementById('shareSlipModal').classList.remove('hidden');
+        }
+
+        function closeShareSlipModal() {
+            document.getElementById('shareSlipModal').classList.add('hidden');
+            document.getElementById('shareStatusMsg').classList.add('opacity-0');
+        }
+
+        function copySlipText() {
+            const debtorName = document.getElementById('slipDebtorName').innerText;
+            const memo = document.getElementById('slipDebtMemo').innerText;
+            const amount = document.getElementById('slipAmountToPay').innerText;
+            const progress = document.getElementById('slipInstallmentProgress').innerText;
+
+            const txt = `สวัสดีครับคุณ ${debtorName} 🌸\n\nนี่คือบันทึกช่วยเตือนความจำยอดหารระบบ Somdul:\nรายการ: ${memo}\nจำนวนเงินที่สะดวกโอนคืนรอบนี้: ${amount}\n(${progress})\n\nรบกวนตรวจสอบความสมบูรณ์ทางการเงิน และโอนเข้าบัญชีส่วนกลางเพื่อไม่ให้ยอดชำระตกหล่นนะครับ ขอบคุณน้า ❤️✨`;
+
+            const textarea = document.createElement("textarea");
+            textarea.value = txt;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                const status = document.getElementById('shareStatusMsg');
+                status.innerText = "คัดลอกข้อความทวงหนี้แบบสุภาพชนแล้ว!";
+                status.classList.remove('opacity-0');
+            } catch (err) {
+                console.error('ไม่สามารถคัดลอกได้', err);
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function downloadSlipImage() {
+            const slipArea = document.getElementById('slipArea');
+            const status = document.getElementById('shareStatusMsg');
+            
+            status.innerText = "กำลังสร้างรูปภาพการ์ดทวงหนี้...";
+            status.classList.remove('opacity-0');
+            
+            html2canvas(slipArea, {
+                useCORS: true,
+                scale: 2,
+                backgroundColor: '#f8fafc'
+            }).then(canvas => {
+                const link = document.createElement('a');
+                const debtorName = document.getElementById('slipDebtorName').innerText;
+                link.download = `somdul-slip-${debtorName}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                status.innerText = "ดาวน์โหลดรูปการ์ดทวงหนี้สำเร็จ! 📥";
+                setTimeout(() => {
+                    status.classList.add('opacity-0');
+                }, 3000);
+            }).catch(err => {
+                console.error(err);
+                status.innerText = "เกิดข้อผิดพลาดในการสร้างไฟล์รูปภาพ";
+            });
+        }
+
+        // DYNAMIC DETAILS POPUP
+        function closeItemDetailModal() {
+            document.getElementById('itemDetailModal').classList.add('hidden');
+            document.getElementById('detailDeleteBtn').classList.add('hidden');
+            document.getElementById('detailActionBtn').classList.add('hidden');
+        }
+
+        function showTransactionDetail(txId) {
+            const tx = state.transactions.find(t => t.id === txId);
+            if (!tx) return;
+            
+            document.getElementById('detailModalTitle').innerText = "รายละเอียดธุรกรรม";
+            
+            const isExpense = tx.type === "EXPENSE";
+            const typeStr = isExpense ? "รายจ่าย (-)" : "รายรับ (+)";
+            const typeColor = isExpense ? "text-rose-500" : "text-emerald-500";
+            
+            let sourceName = 'ไม่ระบุ';
+            const wallet = state.wallets.find(w => w.id === tx.walletId);
+            const card = state.creditCards.find(c => c.id === tx.walletId);
+            if (wallet) sourceName = wallet.name;
+            else if (card) sourceName = `${card.name} (บัตรเครดิต)`;
+            else if (tx.walletId === "บัตรเครดิต") sourceName = "บัตรเครดิต";
+            
+            const cat = CATEGORIES[tx.category];
+            const catName = cat ? cat.name : 'ไม่ระบุ';
+            
+            const contentHTML = `
+                <div class="space-y-3">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                        <span class="text-[10px] text-slate-400 block uppercase font-semibold">จำนวนเงิน</span>
+                        <span class="text-2xl font-bold ${typeColor}">${isExpense ? '-' : '+'}฿${tx.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-y-3 gap-x-2 border-t border-slate-100 pt-3">
+                        <div>
+                            <span class="text-slate-400 block">ประเภทรายการ:</span>
+                            <span class="font-bold text-slate-700 ${typeColor}">${typeStr}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">หมวดหมู่:</span>
+                            <span class="font-bold text-slate-700">${catName}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">วันเวลาทำรายการ:</span>
+                            <span class="font-bold text-slate-700">${tx.date}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">บัญชี/ช่องทาง:</span>
+                            <span class="font-bold text-slate-700">${sourceName}</span>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-slate-400 block">คำอธิบาย:</span>
+                            <span class="font-bold text-slate-700 text-sm">${tx.desc}</span>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-slate-400 block">รหัสอ้างอิง:</span>
+                            <span class="font-mono text-slate-400 text-[10px]">${tx.id}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('detailModalContent').innerHTML = contentHTML;
+            
+            const deleteBtn = document.getElementById('detailDeleteBtn');
+            deleteBtn.classList.remove('hidden');
+            deleteBtn.onclick = function() {
+                if (confirm("คุณต้องการลบบันทึกธุรกรรมนี้ใช่หรือไม่? (การลบประวัติจะไม่ย้อนกระแสเงินสดในกระเป๋า)")) {
+                    state.transactions = state.transactions.filter(t => t.id !== txId);
+                    saveState();
+                    closeItemDetailModal();
+                    refreshAppUI();
+                    alertModal("ลบรายการประวัติสำเร็จ!");
+                }
+            };
+            
+            document.getElementById('itemDetailModal').classList.remove('hidden');
+        }
+
+        function showDebtorDetail(debtorId) {
+            const debtor = state.debtors.find(d => d.id === debtorId);
+            if (!debtor) return;
+            
+            document.getElementById('detailModalTitle').innerText = "รายละเอียดลูกหนี้";
+            
+            const nextPaybackVal = getNextPaybackVal(debtor);
+            const paidAmount = debtor.totalAmount - debtor.remainingAmount;
+            const paidInstallments = debtor.totalInstallments - debtor.remainingInstallments;
+            
+            let cardName = 'ไม่ระบุ/หนี้เงินสด';
+            if (debtor.cardId) {
+                const card = state.creditCards.find(c => c.id === debtor.cardId);
+                if (card) cardName = card.name;
+            }
+            
+            let typeText = 'ยืมเงินสดก้อนเดียว';
+            if (debtor.type === 'CREDIT_CARD_INSTALLMENT') {
+                typeText = 'ผ่อนร่วมบัตรเครดิต';
+            } else if (debtor.type === 'INSTALLMENT') {
+                typeText = 'ผ่อนรายเดือน';
+            } else if (debtor.type === 'SHARED_SUBSCRIPTION') {
+                typeText = 'แชร์ค่าบริการรายเดือน';
+            }
+
+            let amountLabel = 'ยอดหนี้ค้างชำระทั้งหมด';
+            let amountSubLabel = `เงินต้นรวม: ฿${debtor.totalAmount.toLocaleString('th-TH')}`;
+            if (debtor.type === 'SHARED_SUBSCRIPTION') {
+                amountLabel = 'ยอดแชร์ค้างชำระรอบนี้';
+                amountSubLabel = `ค่าบริการแชร์รายเดือน: ฿${debtor.totalAmount.toLocaleString('th-TH')}`;
+            }
+
+            let installmentsText = `${paidInstallments} / ${debtor.totalInstallments} งวด`;
+            if (debtor.type === 'SHARED_SUBSCRIPTION') {
+                if (debtor.totalInstallments === 999) {
+                    installmentsText = 'แชร์ต่อเนื่อง (ไม่มีกำหนด)';
+                } else {
+                    installmentsText = `${paidInstallments} / ${debtor.totalInstallments} เดือน`;
+                }
+            }
+
+            let extraInfoHTML = '';
+            if (debtor.type === 'SHARED_SUBSCRIPTION') {
+                let subName = 'ไม่ได้ผูกบริการหลัก';
+                if (debtor.linkedSubscriptionId) {
+                    const sub = state.recurringPayments.find(r => r.id === debtor.linkedSubscriptionId);
+                    if (sub) subName = sub.name;
+                }
+                extraInfoHTML = `
+                    <div>
+                        <span class="text-slate-400 block">บริการรายเดือนหลัก:</span>
+                        <span class="font-bold text-slate-700">${subName}</span>
+                    </div>
+                `;
+            }
+
+            const contentHTML = `
+                <div class="space-y-3">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                        <span class="text-[10px] text-slate-400 block uppercase font-semibold">${amountLabel}</span>
+                        <span class="text-2xl font-bold text-rose-500">฿${debtor.remainingAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">${amountSubLabel}</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-y-3 gap-x-2 border-t border-slate-100 pt-3">
+                        <div>
+                            <span class="text-slate-400 block">ชื่อลูกหนี้/เพื่อน:</span>
+                            <span class="font-bold text-slate-800">${debtor.name}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">ประเภทหนี้:</span>
+                            <span class="font-bold text-slate-700">${typeText}</span>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-slate-400 block">บันทึกเพิ่มเติม:</span>
+                            <span class="font-bold text-slate-700 text-sm">${debtor.memo}</span>
+                        </div>
+                        ${debtor.type === 'SHARED_SUBSCRIPTION' ? extraInfoHTML : `
+                        <div>
+                            <span class="text-slate-400 block">ผูกกับบัตรเครดิต:</span>
+                            <span class="font-bold text-slate-700">${cardName}</span>
+                        </div>
+                        `}
+                        <div>
+                            <span class="text-slate-400 block">กำหนดชำระคืน:</span>
+                            <span class="font-bold text-slate-700">วันที่ ${debtor.dueDay} ของทุกเดือน</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">จำนวนงวดที่คืนแล้ว:</span>
+                            <span class="font-bold text-slate-700">${installmentsText}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">ยอดคืนงวดถัดไป:</span>
+                            <span class="font-bold text-emerald-600">฿${nextPaybackVal.toLocaleString('th-TH')}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">จำนวนหนี้ที่ได้รับคืนแล้ว:</span>
+                            <span class="font-bold text-emerald-600">฿${paidAmount.toLocaleString('th-TH')}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">รหัสอ้างอิง:</span>
+                            <span class="font-mono text-slate-400 text-[10px]">${debtor.id}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('detailModalContent').innerHTML = contentHTML;
+            
+            const deleteBtn = document.getElementById('detailDeleteBtn');
+            deleteBtn.classList.remove('hidden');
+            deleteBtn.onclick = function() {
+                if (confirm(`คุณต้องการลบรายการลูกหนี้ของ ${debtor.name} หรือไม่? (ยอดเงินจะไม่ถูกหักคืนย้อนหลัง)`)) {
+                    state.debtors = state.debtors.filter(d => d.id !== debtorId);
+                    saveState();
+                    closeItemDetailModal();
+                    refreshAppUI();
+                    alertModal("ลบข้อมูลลูกหนี้สำเร็จ!");
+                }
+            };
+
+            const actionBtn = document.getElementById('detailActionBtn');
+            if (debtor.type === 'SHARED_SUBSCRIPTION') {
+                actionBtn.classList.remove('hidden');
+                actionBtn.innerHTML = `<i class="fa-solid fa-arrows-rotate mr-1"></i> เริ่มรอบบิลใหม่`;
+                actionBtn.onclick = function() {
+                    if (confirm(`คุณต้องการตั้งค่าเริ่มรอบเรียกเก็บเงินรอบถัดไปสำหรับ ${debtor.name} หรือไม่?`)) {
+                        if (debtor.status === 'PAID') {
+                            debtor.status = 'UNPAID';
+                            debtor.remainingAmount = debtor.totalAmount;
+                        } else {
+                            debtor.remainingAmount += debtor.totalAmount;
+                        }
+                        saveState();
+                        showDebtorDetail(debtorId);
+                        refreshAppUI();
+                        alertModal("เริ่มรอบเรียกเก็บเงินรอบใหม่สำเร็จ!");
+                    }
+                };
+            } else {
+                actionBtn.classList.add('hidden');
+            }
+            
+            document.getElementById('itemDetailModal').classList.remove('hidden');
+        }
+
+        function showCardDetail(cardId) {
+            const card = state.creditCards.find(c => c.id === cardId);
+            if (!card) return;
+            
+            document.getElementById('detailModalTitle').innerText = "รายละเอียดบัตรเครดิต";
+            
+            const availableLimit = card.limit - card.balance;
+            const linkedDebtors = state.debtors.filter(d => d.cardId === cardId && d.status !== "PAID" && d.remainingAmount > 0);
+            
+            let linkedHTML = '';
+            if (linkedDebtors.length > 0) {
+                linkedDebtors.forEach(d => {
+                    linkedHTML += `
+                        <div class="flex justify-between items-center py-1 border-b border-slate-100 last:border-0 text-[11px]">
+                            <span class="text-slate-600 font-semibold">${d.name}</span>
+                            <span class="text-slate-500 font-light truncate max-w-[150px]">(${d.memo})</span>
+                            <span class="font-bold text-rose-500">฿${d.remainingAmount.toLocaleString('th-TH')}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                linkedHTML = `<span class="text-slate-400 text-[11px] block italic text-center py-1">ไม่มีหนี้เพื่อนผ่อนร่วมบนบัตรใบนี้</span>`;
+            }
+            
+            const contentHTML = `
+                <div class="space-y-3">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                        <span class="text-[10px] text-slate-400 block uppercase font-semibold">ยอดหนี้รูดค้างชำระปัจจุบัน</span>
+                        <span class="text-2xl font-bold text-slate-800">฿${card.balance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">วงเงินเต็มทั้งหมด: ฿${card.limit.toLocaleString('th-TH')}</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-y-3 gap-x-2 border-t border-slate-100 pt-3">
+                        <div>
+                            <span class="text-slate-400 block">ชื่อบัตรเครดิต:</span>
+                            <span class="font-bold text-slate-800">${card.name}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">วงเงินคงเหลือว่างใช้:</span>
+                            <span class="font-bold text-emerald-600">฿${availableLimit.toLocaleString('th-TH')}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">วันตัดรอบบิลสรุปยอด:</span>
+                            <span class="font-bold text-slate-700">วันที่ ${card.billingDay} ของทุกเดือน</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">วันครบกำหนดชำระจริง:</span>
+                            <span class="font-bold text-slate-700">วันที่ ${card.dueDay} ของทุกเดือน</span>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-slate-100 pt-3 space-y-1.5">
+                        <span class="text-slate-400 block font-semibold text-[10px] uppercase">รายการเพื่อนผ่อนร่วมบัตรเครดิตใบนี้:</span>
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            ${linkedHTML}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('detailModalContent').innerHTML = contentHTML;
+            document.getElementById('detailDeleteBtn').classList.add('hidden'); // Card deletion in settings
+            document.getElementById('itemDetailModal').classList.remove('hidden');
+        }
+
+        function showRecurringDetail(recId) {
+            const rec = state.recurringPayments.find(r => r.id === recId);
+            if (!rec) return;
+            
+            document.getElementById('detailModalTitle').innerText = "รายละเอียดบริการรายประจำ";
+            
+            const contentHTML = `
+                <div class="space-y-3">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                        <span class="text-[10px] text-slate-400 block uppercase font-semibold">ค่าบริการรายเดือน</span>
+                        <span class="text-2xl font-bold text-amber-500">฿${rec.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-y-3 gap-x-2 border-t border-slate-100 pt-3">
+                        <div class="col-span-2">
+                            <span class="text-slate-400 block">ชื่อบริการ / รายจ่าย:</span>
+                            <span class="font-bold text-slate-800 text-sm">${rec.name}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">กำหนดจ่ายของทุกเดือน:</span>
+                            <span class="font-bold text-slate-700">วันที่ ${rec.dueDay}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">สถานะชำระรอบนี้:</span>
+                            <span class="font-bold ${rec.status === 'PAID' ? 'text-emerald-500' : 'text-amber-500'}">${rec.status === 'PAID' ? 'จ่ายแล้ว' : 'ค้างชำระ/รอหัก'}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">รหัสอ้างอิง:</span>
+                            <span class="font-mono text-slate-400 text-[10px]">${rec.id}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('detailModalContent').innerHTML = contentHTML;
+            
+            const deleteBtn = document.getElementById('detailDeleteBtn');
+            deleteBtn.classList.remove('hidden');
+            deleteBtn.onclick = function() {
+                if (confirm(`คุณต้องการลบรายการจ่ายประจำรายเดือน ${rec.name} ออกใช่หรือไม่?`)) {
+                    state.recurringPayments = state.recurringPayments.filter(r => r.id !== recId);
+                    saveState();
+                    closeItemDetailModal();
+                    refreshAppUI();
+                    alertModal("ลบรายการจ่ายประจำสำเร็จ!");
+                }
+            };
+            
+            document.getElementById('itemDetailModal').classList.remove('hidden');
+        }
+
+        // Global Alert Popup
+        function openTransactionModal() {
+            setTxType('EXPENSE');
+            populateTxWalletOptions();
+            document.getElementById('transactionModal').classList.remove('hidden');
+        }
+        function closeTransactionModal() {
+            document.getElementById('transactionModal').classList.add('hidden');
+        }
+        function toggleDebtTypeInputs() {
+            const debtType = document.getElementById('debtType').value;
+            const creditCardSelectWrapper = document.getElementById('creditCardSelectWrapper');
+            const subscriptionSelectWrapper = document.getElementById('subscriptionSelectWrapper');
+            const debtInstallments = document.getElementById('debtInstallments');
+            const installmentLabel = document.getElementById('installmentLabel');
+            const debtAmountLabel = document.getElementById('debtAmountLabel');
+            const debtAmount = document.getElementById('debtAmount');
+            
+            if (debtType === 'CREDIT_CARD_INSTALLMENT') {
+                creditCardSelectWrapper.classList.remove('hidden');
+                if (subscriptionSelectWrapper) subscriptionSelectWrapper.classList.add('hidden');
+                debtInstallments.disabled = false;
+                debtInstallments.parentElement.classList.remove('opacity-50');
+                installmentLabel.innerText = "จำนวนงวดที่ผ่อนชำระ";
+                if (debtAmountLabel) debtAmountLabel.innerText = "จำนวนเงินต้นทั้งหมด";
+                debtAmount.placeholder = "0.00";
+            } else if (debtType === 'INSTALLMENT') {
+                creditCardSelectWrapper.classList.add('hidden');
+                if (subscriptionSelectWrapper) subscriptionSelectWrapper.classList.add('hidden');
+                debtInstallments.disabled = false;
+                debtInstallments.parentElement.classList.remove('opacity-50');
+                installmentLabel.innerText = "จำนวนงวดที่ผ่อนชำระ";
+                if (debtAmountLabel) debtAmountLabel.innerText = "จำนวนเงินต้นทั้งหมด";
+                debtAmount.placeholder = "0.00";
+            } else if (debtType === 'SHARED_SUBSCRIPTION') {
+                creditCardSelectWrapper.classList.add('hidden');
+                if (subscriptionSelectWrapper) {
+                    subscriptionSelectWrapper.classList.remove('hidden');
+                    populateDebtSubscriptionOptions();
+                }
+                debtInstallments.disabled = false;
+                debtInstallments.parentElement.classList.remove('opacity-50');
+                installmentLabel.innerText = "จำนวนเดือนที่แชร์ (ระบุ 999 หากไม่มีกำหนด)";
+                if (debtInstallments.value == "1" || debtInstallments.value == "") {
+                    debtInstallments.value = 999;
+                }
+                if (debtAmountLabel) debtAmountLabel.innerText = "ค่าบริการส่วนที่แชร์เก็บคืนต่อเดือน (บาท)";
+                debtAmount.placeholder = "เช่น 100.00";
+            } else { // CASH_LOAN
+                creditCardSelectWrapper.classList.add('hidden');
+                if (subscriptionSelectWrapper) subscriptionSelectWrapper.classList.add('hidden');
+                debtInstallments.value = 1;
+                debtInstallments.disabled = true;
+                debtInstallments.parentElement.classList.add('opacity-50');
+                installmentLabel.innerText = "จำนวนงวดชำระ (ยืมเงินสดทั่วไป = 1)";
+                if (debtAmountLabel) debtAmountLabel.innerText = "จำนวนเงินต้นทั้งหมด";
+                debtAmount.placeholder = "0.00";
+            }
+        }
+
+        function openDebtModal() {
+            populateDebtCardOptions();
+            toggleDebtTypeInputs();
+            document.getElementById('debtModal').classList.remove('hidden');
+        }
+        function closeDebtModal() {
+            document.getElementById('debtModal').classList.add('hidden');
+        }
+        function openCreditCardPaymentModal() {
+            if (state.creditCards.length === 0) {
+                alertModal("ไม่มีบัตรเครดิตในระบบ กรุณาเพิ่มบัตรเครดิตในส่วนตั้งค่าก่อนจ่ายบัตร!");
+                return;
+            }
+            populateCCPaymentCardOptions();
+            populateCCPaymentWalletOptions();
+            document.getElementById('creditCardPaymentModal').classList.remove('hidden');
+            updateCCPaymentMax();
+        }
+        function closeCreditCardPaymentModal() {
+            document.getElementById('creditCardPaymentModal').classList.add('hidden');
+        }
+        function toggleInfoModal() {
+            const modal = document.getElementById('infoModal');
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        // Refresh UI
+        function refreshAppUI() {
+            calculateSummary();
+            if (state.activeTab === 'home') {
+                renderDashboardWallets();
+                renderTransactions();
+                renderCategorySummary();
+            }
+            if (state.activeTab === 'debtors') renderDebtors();
+            if (state.activeTab === 'cards') renderCreditCards();
+            if (state.activeTab === 'recurring') renderRecurring();
+        }
+
+        // On Load Page Init
+        window.onload = function() {
+            loadState();
+            
+            // Add Debt Card Event Listener for changing due day
+            document.getElementById('debtCardId').addEventListener('change', function() {
+                const cardId = this.value;
+                const card = state.creditCards.find(c => c.id === cardId);
+                if (card) {
+                    document.getElementById('debtDueDay').value = card.dueDay;
+                }
+            });
+
+            // Initialize bottom tabs to Home
+            switchMainTab('home');
+        }
+    </script>
+</body>
+</html>
